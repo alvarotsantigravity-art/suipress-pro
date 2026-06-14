@@ -210,7 +210,7 @@
 
     /* ─── prensa specific ───────────────────────────────────────────── */
     .prensa-container { display: flex; flex-direction: column; gap: 40px; }
-    .bobina-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px; }
+    .bobina-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 400px)); gap: 28px; justify-content: center; }
     .bobina-col {
       padding: 32px;
       border-radius: var(--radius);
@@ -218,24 +218,18 @@
       flex-direction: column;
       gap: 24px;
       transition: all var(--motion-base);
+      background: linear-gradient(135deg, rgba(0, 113, 227, 0.05) 0%, rgba(0, 113, 227, 0.02) 100%);
+      border: 1px solid rgba(0, 113, 227, 0.1);
     }
-    .bobina-col.a { 
-      background: rgba(0, 113, 227, 0.05); 
-      border: 1px solid rgba(0, 113, 227, 0.15); 
-    }
-    .bobina-col.b { 
-      background: rgba(52, 199, 89, 0.05); 
-      border: 1px solid rgba(52, 199, 89, 0.15); 
-    }
+    .bobina-col:hover { border-color: rgba(0, 113, 227, 0.2); transform: translateY(-2px); }
     .bobina-col h3 {
       font-size: 14px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.12em;
       margin-bottom: 12px;
+      color: var(--accent);
     }
-    .bobina-col.a h3 { color: var(--accent); }
-    .bobina-col.b h3 { color: #248a3d; }
 
     /* ─── publicaciones specific ────────────────────────────────────── */
     .pub-container { display: flex; flex-direction: column; gap: 40px; }
@@ -249,12 +243,36 @@
       transition: all var(--motion-base) var(--ease-standard);
     }
     .results-area.prensa-mode {
-      justify-content: flex-start;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 48px;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 24px;
+      background: transparent;
+      border: none;
+      padding: 0;
     }
-    .result-block { display: flex; flex-direction: column; gap: 6px; min-width: 200px; transition: transform var(--motion-base); text-align: left; }
+    .result-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: clamp(24px, 4vw, 40px);
+      width: 100%;
+      transition: all var(--motion-base) var(--ease-standard);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .result-card.accent-blue {
+      background: linear-gradient(135deg, rgba(0, 113, 227, 0.08) 0%, rgba(0, 113, 227, 0.02) 100%);
+      border-color: rgba(0, 113, 227, 0.2);
+    }
+    .result-card.accent-green {
+      background: linear-gradient(135deg, rgba(52, 199, 89, 0.08) 0%, rgba(52, 199, 89, 0.02) 100%);
+      border-color: rgba(52, 199, 89, 0.2);
+    }
+    .result-card:hover { transform: translateY(-5px); box-shadow: 0 20px 60px rgba(0,0,0,0.07); }
+
+    .result-block { display: flex; flex-direction: column; gap: 6px; transition: transform var(--motion-base); text-align: left; }
     .result-block.accent-a { color: var(--accent); }
     .result-block.accent-b { color: #248a3d; }
     .result-label { font-size: 13px; font-weight: 600; color: var(--meta); text-transform: uppercase; letter-spacing: 0.12em; }
@@ -274,6 +292,8 @@
       color: var(--muted);
       background: var(--surface-warm);
     }
+
+    .eyebrow-mod { color: var(--accent); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; display: block; margin-bottom: 8px; }
 
     /* ─── dark mode ────────────────────────────────────────────────── */
     body.dark-mode {
@@ -382,9 +402,49 @@
     <button class="action-btn" onclick="shareResults()" title="Compartir">
       <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg>
     </button>
+    <button class="action-btn" onclick="exportToPDF()" title="Descargar Informe PDF">
+      <svg viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3.5h-1.25v1.5h1.25V11H19v-1.5h-1.25V7H20.5v1.5zM9 9.5h1v-1H9v1zM14 10.5h1v-2h-1v2zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/></svg>
+    </button>
     <button class="action-btn" onclick="clearAll()" title="Limpiar Campos">
       <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
     </button>
+  </div>
+
+  <!-- PDF Report Template (Hidden) -->
+  <div id="pdf-template" style="display: none; position: absolute; left: -9999px;">
+    <div id="report-content" style="width: 800px; padding: 60px; background: white; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Helvetica, Arial, sans-serif; color: #1d1d1f;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0071e3; padding-bottom: 20px; margin-bottom: 40px;">
+        <div>
+          <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.02em;">SuiPress <span style="color: #0071e3;">Report</span></h1>
+          <p style="margin: 5px 0 0; font-size: 12px; color: #86868b; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Informe de Precisión Técnica</p>
+        </div>
+        <div style="text-align: right;">
+          <p id="report-date" style="margin: 0; font-size: 14px; color: #1d1d1f; font-weight: 600;"></p>
+          <p id="report-id" style="margin: 5px 0 0; font-size: 12px; color: #86868b;"></p>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 40px;">
+        <h2 id="report-module-title" style="font-size: 22px; font-weight: 600; margin-bottom: 10px;"></h2>
+        <p id="report-mode-label" style="font-size: 14px; color: #0071e3; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;"></p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 60px;">
+        <div>
+          <h3 style="font-size: 12px; text-transform: uppercase; color: #86868b; letter-spacing: 0.1em; margin-bottom: 20px; border-bottom: 1px solid #d2d2d7; padding-bottom: 8px;">Especificaciones Técnicas</h3>
+          <div id="report-inputs" style="display: flex; flex-direction: column; gap: 12px;"></div>
+        </div>
+        <div>
+          <h3 style="font-size: 12px; text-transform: uppercase; color: #86868b; letter-spacing: 0.1em; margin-bottom: 20px; border-bottom: 1px solid #d2d2d7; padding-bottom: 8px;">Resultados de Cálculo</h3>
+          <div id="report-results" style="display: flex; flex-direction: column; gap: 24px;"></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 100px; padding-top: 20px; border-top: 1px solid #d2d2d7; display: flex; justify-content: space-between; font-size: 11px; color: #86868b;">
+        <span>SuiPress Engineering · Artes Gráficas</span>
+        <span>v2.4.0 · Informe Autenticado</span>
+      </div>
+    </div>
   </div>
 
   <footer>
@@ -399,6 +459,7 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script>
     /* ─── CALCULATOR CORE LOGIC ────────────────────────────────────── */
     const CalculatorCore = {
@@ -670,24 +731,98 @@
     }
 
     function clearAll() {
-      document.querySelectorAll('input').forEach(input => input.value = '');
-      calculate();
+      render(); // Reinicia el módulo con los valores por defecto de CONFIG
     }
 
     function shareResults() {
       const results = document.querySelectorAll('.result-block');
-      let text = "SuiPress - Resultado del Cálculo:\n";
+      let text = "SuiPress - Informe de Precisión:\n\n";
       results.forEach(block => {
         const label = block.querySelector('.result-label')?.innerText;
         const value = block.querySelector('.result-value')?.innerText;
         if (label && value) text += `${label}: ${value}\n`;
       });
+      text += "\nGenerado por SuiPress Engineering.";
       
       if (navigator.share) {
         navigator.share({ title: 'SuiPress Result', text }).catch(() => {});
       } else {
         navigator.clipboard.writeText(text).then(() => alert('Resultado copiado al portapapeles.'));
       }
+    }
+
+    function exportToPDF() {
+      const modData = CONFIG[state.mod];
+      const modeData = modData.modes.find(m => m.id === state.mode);
+      
+      // Meta Info
+      document.getElementById('report-date').innerText = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      document.getElementById('report-id').innerText = `ID: SP-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      document.getElementById('report-module-title').innerText = modData.title;
+      document.getElementById('report-mode-label').innerText = modeData.label;
+
+      // Inputs mapping
+      const inputContainer = document.getElementById('report-inputs');
+      inputContainer.innerHTML = '';
+      const allInputs = document.querySelectorAll('input, select');
+      
+      // Get all fields from current CONFIG and Mode
+      let fieldsToExport = [];
+      if (state.mod === 'prensa') {
+        fieldsToExport = modData.fields[state.mode];
+      } else if (state.mod === 'publicaciones') {
+        fieldsToExport = modData.fields[state.mode];
+      } else {
+        fieldsToExport = modData.fields[state.mode];
+      }
+
+      fieldsToExport.forEach(f => {
+        const inputElement = document.getElementById(f.id);
+        const value = inputElement ? inputElement.value : '0';
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.justifyContent = 'space-between';
+        item.style.fontSize = '12px';
+        item.innerHTML = `<span style="color: #86868b;">${f.label}</span><span style="font-weight: 600;">${value}</span>`;
+        inputContainer.appendChild(item);
+      });
+
+      // Results mapping
+      const resultsContainer = document.getElementById('report-results');
+      resultsContainer.innerHTML = '';
+      const activeResults = document.querySelectorAll('.results-area .result-block');
+      
+      activeResults.forEach(block => {
+        const label = block.querySelector('.result-label')?.innerText;
+        const value = block.querySelector('.result-value')?.innerText;
+        if (label && value) {
+          const item = document.createElement('div');
+          item.style.padding = '15px';
+          item.style.background = '#f5f5f7';
+          item.style.borderRadius = '12px';
+          item.innerHTML = `
+            <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #86868b; letter-spacing: 0.05em; font-weight: 600;">${label}</p>
+            <p style="margin: 5px 0 0; font-size: 24px; font-weight: 700; color: #1d1d1f;">${value}</p>
+          `;
+          resultsContainer.appendChild(item);
+        }
+      });
+
+      // Show template for capture
+      const template = document.getElementById('pdf-template');
+      template.style.display = 'block';
+
+      const opt = {
+        margin: [0, 0, 0, 0],
+        filename: `SuiPress_${modData.title}_${new Date().getTime()}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
+      };
+
+      html2pdf().from(document.getElementById('report-content')).set(opt).save().then(() => {
+        template.style.display = 'none';
+      });
     }
 
     function syncEffects(id, val) {
@@ -803,7 +938,7 @@
         <div class="module-transition" role="tabpanel" aria-labelledby="tab-${state.mod}">
           <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; gap: 20px; flex-wrap: wrap;">
             <div>
-              <span class="eyebrow" style="color: var(--accent); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; display: block; margin-bottom: 8px;">Cálculo Dinámico</span>
+              <span class="eyebrow-mod">Cálculo Dinámico</span>
               <h2 class="h2" style="margin: 0; font-size: 32px;">${modData.title}</h2>
             </div>
             <div class="tabs-nav" role="tablist">
@@ -923,7 +1058,7 @@
       let mainResultHtml = '';
       if (isK2E) {
         mainResultHtml = `
-          <div class="result-block" style="grid-column: 1 / -1; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 24px;">
+          <div class="result-card" style="border-color: var(--accent); background: var(--surface-warm); margin-bottom: 24px;">
             <span class="result-label">Tirada Estimada</span>
             <span class="result-value" id="res-ejs-value" style="color: var(--accent);">${resEjs.toLocaleString('es-ES', {maximumFractionDigits: 0})}</span>
             <span style="font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 10px;">Ejemplares</span>
@@ -933,30 +1068,37 @@
 
       resultsArea.innerHTML = `
         ${mainResultHtml}
-        <div class="result-block accent-a">
-          <span class="result-label">Consumo Bobina A</span>
-          <span class="result-value" id="kilosA-value">${valA} <small style="font-size: 16px; color: var(--meta);">kg</small></span>
-          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(0, 113, 227, 0.15);">
-            <span class="result-label">Ancho Bobina A</span>
-            <span class="result-value" style="font-size: 56px;">${anchoA} <small style="font-size: 16px;">cm</small></span>
+        
+        <div class="result-card accent-blue">
+          <!-- Bobina A -->
+          <div class="result-block">
+            <span class="result-label" style="color: var(--accent);">Consumo Bobina A</span>
+            <span class="result-value" id="kilosA-value" style="margin-top: 8px;">${valA} <small style="font-size: 18px; color: var(--meta);">kg</small></span>
+            <span class="result-value" style="font-size: 56px; color: var(--accent); margin-top: 16px;">${anchoA} <small style="font-size: 18px;">cm</small></span>
+            <span class="result-label" style="margin-top: 4px;">Ancho Bobina A</span>
           </div>
-        </div>
-        <div class="result-block accent-b">
-          <span class="result-label">Consumo Bobina B</span>
-          <span class="result-value" id="kilosB-value">${valB} <small style="font-size: 16px; color: var(--meta);">kg</small></span>
-          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(52, 199, 89, 0.15);">
-            <span class="result-label">Ancho Bobina B</span>
-            <span class="result-value" style="font-size: 56px;">${anchoB} <small style="font-size: 16px;">cm</small></span>
+
+          <div style="height: 1px; background: var(--border); margin: 40px 0; opacity: 0.5;"></div>
+
+          <!-- Bobina B -->
+          <div class="result-block">
+            <span class="result-label" style="color: var(--accent);">Consumo Bobina B</span>
+            <span class="result-value" id="kilosB-value" style="margin-top: 8px;">${valB} <small style="font-size: 18px; color: var(--meta);">kg</small></span>
+            <span class="result-value" style="font-size: 56px; color: var(--accent); margin-top: 16px;">${anchoB} <small style="font-size: 18px;">cm</small></span>
+            <span class="result-label" style="margin-top: 4px;">Ancho Bobina B</span>
           </div>
-        </div>
-        <div class="result-block">
-          <span class="result-label">Peso por Ejemplar</span>
-          <span class="result-value" style="font-size: 32px; color: var(--fg-2);">${sec.toLocaleString('es-ES', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</span>
-          <span style="font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 10px;">kg/u</span>
+
+          <div style="height: 1px; background: var(--border); margin: 40px 0; opacity: 0.5;"></div>
+
+          <!-- Peso por Ejemplar -->
+          <div class="result-block">
+            <span class="result-label">Peso Total por Ejemplar</span>
+            <span class="result-value" style="font-size: 32px; color: var(--fg-2); margin-top: 8px;">${sec.toLocaleString('es-ES', {minimumFractionDigits: 4, maximumFractionDigits: 4})} <small style="font-size: 18px; color: var(--muted);">kg/u</small></span>
+          </div>
         </div>
       `;
 
-      gsap.from('.results-area .result-block', { opacity: 0, y: 20, stagger: 0.1, duration: 0.4, ease: "power2.out" });
+      gsap.from('.result-card', { opacity: 0, scale: 0.98, y: 20, stagger: 0.1, duration: 0.5, ease: "power2.out" });
     }
 
     function updateUIPublicaciones(p) {
