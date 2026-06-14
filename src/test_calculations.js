@@ -141,6 +141,31 @@ const prensaInv = CalculatorCore.prensa.kilosAEjemplares({
 allPassed &= assertAlmostEqual(prensaInv, 2800000, 1.0, "PRENSA Kilos a Ejemplares (Inversa)");
 
 
+// 6. PUBLICACIONES
+// Entradas por defecto:
+// pub_tirada = 5000, pub_ancho = 21, pub_alto = 29.7
+// pub_int_paginas = 64, pub_int_gramaje = 80
+// pub_cub_paginas = 4, pub_cub_gramaje = 200
+// pub_por_paginas = 0, pub_por_gramaje = 0
+// pub_cup_paginas = 0, pub_cup_gramaje = 0
+// Esperado: pesoUnitario = 186.46135 gr, totalTirada = 932.30676 kg
+const pubRes = CalculatorCore.publicaciones.calcularTotal({
+  pub_tirada: 5000,
+  pub_ancho: 21,
+  pub_alto: 29.7,
+  pub_int_paginas: 64,
+  pub_int_gramaje: 80,
+  pub_cub_paginas: 4,
+  pub_cub_gramaje: 200,
+  pub_por_paginas: 0,
+  pub_por_gramaje: 0,
+  pub_cup_paginas: 0,
+  pub_cup_gramaje: 0
+});
+allPassed &= assertAlmostEqual(pubRes.pesoUnitario, 186.46135, 0.01, "PUBLICACIONES - Peso Unitario (gramos)");
+allPassed &= assertAlmostEqual(pubRes.totalTirada, 932.30676, 0.01, "PUBLICACIONES - Kilos Total Tirada");
+
+
 console.log("\n==============================================");
 if (allPassed) {
   console.log("🎉 ALL TESTS PASSED SUCCESSFULLY!");

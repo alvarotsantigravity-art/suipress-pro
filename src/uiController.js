@@ -1,649 +1,640 @@
-/**
- * Controlador de Interfaz de Usuario (UI) para la Calculadora Gráfica Pro.
- * Sigue el patrón SoC (Separación de Responsabilidades): lee inputs,
- * invoca la lógica en CalculatorCore, maneja estados, tema claro/oscuro y actualiza el DOM.
- */
+/* ─── UI CONTROLLER ────────────────────────────────────────────── */
+let isMenuOpen = false;
+function toggleMenu() {
+  const menu = document.getElementById('tools-menu');
+  isMenuOpen = !isMenuOpen;
+  if (isMenuOpen) {
+    menu.style.display = 'flex';
+    gsap.fromTo(menu, { opacity: 0, y: -10, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 0.3, ease: "power2.out" });
+  } else {
+    gsap.to(menu, { opacity: 0, y: -10, scale: 0.95, duration: 0.2, onComplete: () => menu.style.display = 'none' });
+  }
+}
 
-document.addEventListener('DOMContentLoaded', () => {
-  // --- Estado de la Aplicación ---
-  const state = {
-    activeTab: 'rotativa', // 'rotativa' | 'plano' | 'prensa'
-    rotativaMode: 'ejAKilos', // 'ejAKilos' | 'kilosAEj'
-    planoMode: 'plAKilos', // 'plAKilos' | 'kilosAPl'
-    prensaMode: 'ejAKilos' // 'ejAKilos' | 'kilosAEj'
-  };
-
-  // --- Elementos del DOM ---
-  const tabs = {
-    rotativa: document.getElementById('tab-rotativa'),
-    plano: document.getElementById('tab-plano'),
-    prensa: document.getElementById('tab-prensa')
-  };
-
-  const sections = {
-    rotativa: document.getElementById('section-rotativa'),
-    plano: document.getElementById('section-plano'),
-    prensa: document.getElementById('section-prensa')
-  };
-
-  // --- Lógica del Tema Claro / Oscuro ---
-  function initTheme() {
-    const themeBtn = document.getElementById('theme-toggle-btn');
-    if (!themeBtn) return;
-
-    // Obtener preferencia guardada o por sistema
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+// Cerrar menú al hacer clic fuera
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('tools-menu');
+  const trigger = document.getElementById('tools-trigger');
+  if (menu && trigger) {
+    if (isMenuOpen && !menu.contains(e.target) && !trigger.contains(e.target)) {
+      toggleMenu();
     }
-
-    // Event listener del botón
-    themeBtn.addEventListener('click', () => {
-      const isDark = document.documentElement.classList.contains('dark');
-      if (isDark) {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-      } else {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      }
-    });
   }
+});
 
-  // --- Inicialización y Eventos de Navegación ---
-  function initNavigation() {
-    Object.keys(tabs).forEach(tabKey => {
-      tabs[tabKey].addEventListener('click', () => {
-        // Desactivar pestañas activas
-        Object.keys(tabs).forEach(k => {
-          tabs[k].classList.remove('active');
-          sections[k].classList.add('hidden');
-        });
+const PRESET_ANCHOS = [
+  { label: '160 cm', value: 160 },
+  { label: '120 cm', value: 120 },
+  { label: '80 cm', value: 80 },
+  { label: '40 cm', value: 40 },
+  { label: '148 cm', value: 148 },
+  { label: '111 cm', value: 111 },
+  { label: '74 cm', value: 74 },
+  { label: '37 cm', value: 37 },
+  { label: '140 cm', value: 140 },
+  { label: '105 cm', value: 105 },
+  { label: '70 cm', value: 70 },
+  { label: 'Otro', value: 'other' }
+];
 
-        // Activar pestaña seleccionada
-        tabs[tabKey].classList.add('active');
-        sections[tabKey].classList.remove('hidden');
-
-        state.activeTab = tabKey;
-        calculateAll();
-      });
-    });
-
-    // Toggles de modo de cálculo (con estilo brutalista)
-    setupToggle('rot-mode-toggle', 'rotativaMode', ['ejAKilos', 'kilosAEj'], ['rot-form-ejakilos', 'rot-form-kilosej']);
-    setupToggle('plano-mode-toggle', 'planoMode', ['plAKilos', 'kilosAPl'], ['plano-form-plakilos', 'plano-form-kilosepl']);
-    setupToggle('prensa-mode-toggle', 'prensaMode', ['ejAKilos', 'kilosAEj'], ['prensa-form-ejakilos', 'prensa-form-kilosej']);
-  }
-
-  function setupToggle(toggleId, stateKey, modes, formIds) {
-    const container = document.getElementById(toggleId);
-    if (!container) return;
-
-    const buttons = container.querySelectorAll('button');
-    buttons.forEach((btn, index) => {
-      btn.addEventListener('click', () => {
-        buttons.forEach(b => {
-          b.classList.remove('active');
-        });
-        btn.classList.add('active');
-
-        state[stateKey] = modes[index];
-
-        // Mostrar / Ocultar formularios correspondientes
-        formIds.forEach((formId, fIndex) => {
-          const formEl = document.getElementById(formId);
-          if (formEl) {
-            if (fIndex === index) {
-              formEl.classList.remove('hidden');
-            } else {
-              formEl.classList.add('hidden');
-            }
-          }
-        });
-
-        calculateAll();
-      });
-    });
-  }
-
-  // --- Captura segura de datos y validación ---
-  function getFloatValue(id, defaultVal = 0) {
-    const el = document.getElementById(id);
-    if (!el || el.value.trim() === '') return defaultVal;
-    const val = parseFloat(el.value);
-    return isNaN(val) ? defaultVal : val;
-  }
-
-  function setOutputText(id, value, isInteger = true) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (value === null || value === undefined || isNaN(value)) {
-      el.textContent = '---';
-      return;
+const CONFIG = {
+  rotativa: {
+    title: "Comercial",
+    modes: [{id: 'e2k', label: 'Ejs → Kilos'}, {id: 'k2e', label: 'Kilos → Ejs'}],
+    fields: {
+      e2k: [
+        {id: 'tirada', label: 'Tirada (Ejemplares)', val: 20000},
+        {id: 'gramaje', label: 'Gramaje (g/m²)', val: 80},
+        {id: 'bobina', label: 'Ancho Bobina (cm)', val: 88},
+        {id: 'desarrollo', label: 'Desarrollo (cm)', val: 124, options: [
+          { label: 'Lithoman-Kba 124 cm', value: 124 },
+          { label: 'Rotoman', value: 63 },
+          { label: 'Komori', value: 62 },
+          { label: 'Otro', value: 'other' }
+        ]},
+        {id: 'vueltasArranque', label: 'Arranque (Vueltas)', val: 1500},
+        {id: 'perdidoPct', label: '% Perdido (Merma)', val: 8},
+        {id: 'efectos', label: 'Efectos', val: 1},
+        {id: 'pliegos', label: 'Pliegos', val: 1}
+      ],
+      k2e: [
+        {id: 'kilos', label: 'Kilos Disponibles', val: 1000},
+        {id: 'gramaje', label: 'Gramaje (g/m²)', val: 80},
+        {id: 'bobina', label: 'Ancho Bobina (cm)', val: 88},
+        {id: 'desarrollo', label: 'Desarrollo (cm)', val: 124, options: [
+          { label: 'Lithoman-Kba 124 cm', value: 124 },
+          { label: 'Rotoman', value: 63 },
+          { label: 'Komori', value: 62 },
+          { label: 'Otro', value: 'other' }
+        ]},
+        {id: 'perdidoPct', label: '% Perdido (Merma)', val: 8},
+        {id: 'arranque', label: 'Arranque (Vueltas)', val: 1500},
+        {id: 'efectos', label: 'Efectos', val: 1},
+        {id: 'pliegos', label: 'Pliegos', val: 1}
+      ]
     }
-    // Formatear número
-    const formatted = new Intl.NumberFormat('es-ES', {
-      minimumFractionDigits: isInteger ? 0 : 2,
-      maximumFractionDigits: isInteger ? 0 : 4
-    }).format(value);
-    
-    // Animar al recalcular si cambia el valor
-    if (el.textContent !== formatted && ['rot-res-display', 'plano-res-display', 'prensa-res-kilos-total', 'prensa-res-tirada'].includes(id)) {
-      el.classList.remove('recalculating-pulse');
-      void el.offsetWidth; // Reflow
-      el.classList.add('recalculating-pulse');
+  },
+  plano: {
+    title: "Pliego",
+    modes: [{id: 'p2k', label: 'Pliegos → Kilos'}, {id: 'k2p', label: 'Kilos → Pliegos'}],
+    fields: {
+      p2k: [
+        {id: 'pliegos', label: 'Cantidad Pliegos', val: 5000},
+        {id: 'alto', label: 'Alto Hoja (cm)', val: 100},
+        {id: 'ancho', label: 'Ancho Hoja (cm)', val: 70},
+        {id: 'gramaje', label: 'Gramaje (g/m²)', val: 115}
+      ],
+      k2p: [
+        {id: 'kilos', label: 'Kilos Totales', val: 250},
+        {id: 'alto', label: 'Alto Hoja (cm)', val: 100},
+        {id: 'ancho', label: 'Ancho Hoja (cm)', val: 70},
+        {id: 'gramaje', label: 'Gramaje (g/m²)', val: 115}
+      ]
     }
-
-    el.textContent = formatted;
+  },
+  prensa: {
+    title: "Prensa",
+    modes: [{id: 'e2k', label: 'Ejs → Kilos'}, {id: 'k2e', label: 'Kilos → Ejs'}],
+    fields: {
+      e2k: [
+        {id: 'tirada', label: 'Tirada (Ejs)', val: 15000},
+        {id: 'paginas', label: 'Páginas Totales', val: 32, options: [
+          {label: '64', value: 64}, {label: '48', value: 48}, {label: '40', value: 40}, 
+          {label: '36', value: 36}, {label: '32', value: 32}, {label: '24', value: 24}, 
+          {label: '20', value: 20}, {label: '12', value: 12}, {label: '8', value: 8}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'gramaje', label: 'Gramaje (g/m²)', val: 48.8, options: [
+          {label: '48,8', value: 48.8}, {label: '40', value: 40}, {label: '36', value: 36}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'desarrollo', label: 'Desarrollo (cm)', val: 28.9, options: [
+          { label: 'Wifag-Kba Comet', value: 28.9 },
+          { label: 'Colorman', value: 25.5 },
+          { label: 'Otro', value: 'other' }
+        ]},
+        {id: 'altoPagina', label: 'Alto Pág (cm)', val: 40, options: [
+          {label: '40', value: 40}, {label: '37', value: 37}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'arranque', label: 'Arranque (Ejs)', val: 5000},
+        {id: 'perdidoPct', label: '% Perdido', val: 7.5},
+        {id: 'versiones', label: 'Arranques Versión', val: 1},
+        {id: 'bobinaA_ancho', label: 'Ancho Bobina A (cm)', val: 160, group: 'A', options: PRESET_ANCHOS},
+        {id: 'bobinaA_web', label: 'Torres', val: 1, group: 'A', options: [
+          {label: '1', value: 1}, {label: '2', value: 2}, {label: '3', value: 3}, 
+          {label: '4', value: 4}, {label: '5', value: 5}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'bobinaA_efectos', label: 'Efectos', val: 2, group: 'A', options: [
+          {label: '1', value: 1}, {label: '2', value: 2}
+        ]},
+        {id: 'bobinaB_ancho', label: 'Ancho Bobina B (cm)', val: 80, group: 'B', options: PRESET_ANCHOS},
+        {id: 'bobinaB_web', label: 'Torres', val: 1, group: 'B', options: [
+          {label: '1', value: 1}, {label: '2', value: 2}, {label: '3', value: 3}, 
+          {label: '4', value: 4}, {label: '5', value: 5}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'bobinaB_efectos', label: 'Efectos', val: 2, group: 'B', options: [
+          {label: '1', value: 1}, {label: '2', value: 2}
+        ]}
+      ],
+      k2e: [
+        {id: 'kilosTotal', label: 'Kilos Totales', val: 850},
+        {id: 'paginas', label: 'Páginas Totales', val: 32, options: [
+          {label: '64', value: 64}, {label: '48', value: 48}, {label: '40', value: 40}, 
+          {label: '36', value: 36}, {label: '32', value: 32}, {label: '24', value: 24}, 
+          {label: '20', value: 20}, {label: '12', value: 12}, {label: '8', value: 8}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'gramaje', label: 'Gramaje (g/m²)', val: 48.8, options: [
+          {label: '48,8', value: 48.8}, {label: '40', value: 40}, {label: '36', value: 36}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'desarrollo', label: 'Desarrollo (cm)', val: 28.9, options: [
+          { label: 'Wifag-Kba Comet', value: 28.9 },
+          { label: 'Colorman', value: 25.5 },
+          { label: 'Otro', value: 'other' }
+        ]},
+        {id: 'altoPagina', label: 'Alto Pág (cm)', val: 40, options: [
+          {label: '40', value: 40}, {label: '37', value: 37}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'arranque', label: 'Arranque (Ejs)', val: 5000},
+        {id: 'perdidoPct', label: '% Perdido', val: 7.5},
+        {id: 'versiones', label: 'Arranques Versión', val: 1},
+        {id: 'bobinaA_ancho', label: 'Ancho Bobina A (cm)', val: 160, group: 'A', options: PRESET_ANCHOS},
+        {id: 'bobinaA_web', label: 'Torres', val: 1, group: 'A', options: [
+          {label: '1', value: 1}, {label: '2', value: 2}, {label: '3', value: 3}, 
+          {label: '4', value: 4}, {label: '5', value: 5}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'bobinaA_efectos', label: 'Efectos', val: 2, group: 'A', options: [
+          {label: '1', value: 1}, {label: '2', value: 2}
+        ]},
+        {id: 'bobinaB_ancho', label: 'Ancho Bobina B (cm)', val: 80, group: 'B', options: PRESET_ANCHOS},
+        {id: 'bobinaB_web', label: 'Torres', val: 1, group: 'B', options: [
+          {label: '1', value: 1}, {label: '2', value: 2}, {label: '3', value: 3}, 
+          {label: '4', value: 4}, {label: '5', value: 5}, {label: 'Otro', value: 'other'}
+        ]},
+        {id: 'bobinaB_efectos', label: 'Efectos', val: 2, group: 'B', options: [
+          {label: '1', value: 1}, {label: '2', value: 2}
+        ]}
+      ]
+    }
+  },
+  publicaciones: {
+    title: "Publicaciones",
+    modes: [{id: 'std', label: 'Cálculo de Pesos'}],
+    fields: {
+      std: [
+        {id: 'pub_tirada', label: 'Tirada (Ejs)', val: 5000},
+        {id: 'pub_ancho', label: 'Ancho Pág (cm)', val: 21},
+        {id: 'pub_alto', label: 'Alto Pág (cm)', val: 29.7},
+        {id: 'pub_int_paginas', label: 'Págs Interior', val: 64, group: 'int'},
+        {id: 'pub_int_gramaje', label: 'Gramaje Interior', val: 80, group: 'int'},
+        {id: 'pub_cub_paginas', label: 'Págs Cubierta', val: 4, group: 'cub'},
+        {id: 'pub_cub_gramaje', label: 'Gramaje Cubierta', val: 200, group: 'cub'},
+        {id: 'pub_por_paginas', label: 'Págs Portadilla', val: 0, group: 'por'},
+        {id: 'pub_por_gramaje', label: 'Gramaje Portadilla', val: 0, group: 'por'},
+        {id: 'pub_cup_paginas', label: 'Págs Cupón', val: 0, group: 'cup'},
+        {id: 'pub_cup_gramaje', label: 'Gramaje Cupón', val: 0, group: 'cup'}
+      ]
+    }
   }
+};
 
-  // --- Real-time Auto-Calculation bindings ---
-  function bindInputs() {
-    const allInputs = document.querySelectorAll('input');
-    allInputs.forEach(input => {
-      input.addEventListener('input', calculateAll);
-    });
-  }
+let state = { mod: 'rotativa', mode: 'e2k' };
 
-  // --- Lógica de cálculo por módulo ---
+function switchModule(mod) {
+  state.mod = mod;
+  state.mode = CONFIG[mod].modes[0].id;
   
-  // 1. ROTATIVA
-  function calculateRotativa() {
-    const unitEl = document.getElementById('rot-res-unit');
-    
-    if (state.rotativaMode === 'ejAKilos') {
-      if (unitEl) unitEl.textContent = 'KILOS DE PAPEL';
-      
-      const inputs = {
-        vueltasArranque: getFloatValue('rot-vueltas-arranque', 0),
-        perdidoPct: getFloatValue('rot-perdido-pct', 0),
-        tirada: getFloatValue('rot-tirada', 0),
-        gramaje: getFloatValue('rot-gramaje', 0),
-        pliegos: getFloatValue('rot-pliegos', 1),
-        efectos: getFloatValue('rot-efectos', 1),
-        desarrollo: getFloatValue('rot-desarrollo', 0),
-        bobina: getFloatValue('rot-bobina', 0),
-        cambios4_0: getFloatValue('rot-cambios-40', 0),
-        mermaCambio4_0: getFloatValue('rot-merma-40', 0),
-        cambios4_4: getFloatValue('rot-cambios-44', 0),
-        mermaCambio4_4: getFloatValue('rot-merma-44', 0)
-      };
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const isActive = b.id.includes(mod);
+    b.classList.toggle('active', isActive);
+    b.setAttribute('aria-selected', isActive);
+  });
+  
+  gsap.to('#module-container', { opacity: 0, y: 10, duration: 0.2, onComplete: render });
+}
 
-      if (inputs.efectos <= 0) {
-        showError('rot-efectos', 'Efectos debe ser mayor a 0');
-        setOutputText('rot-res-display', null);
-        return;
-      }
-      clearError('rot-efectos');
+function switchMode(mode) {
+  state.mode = mode;
+  gsap.to('#module-container', { opacity: 0, x: -10, duration: 0.2, onComplete: render });
+}
 
-      const kilos = CalculatorCore.rotativa.ejemplaresAKilos(inputs);
-      setOutputText('rot-res-display', kilos);
-    } else {
-      // Kilos a Ejemplares
-      if (unitEl) unitEl.textContent = 'EJEMPLARES (TIRADA)';
-      
-      const inputs = {
-        kilos: getFloatValue('rot-inv-kilos', 0),
-        bobina: getFloatValue('rot-inv-bobina', 0),
-        gramaje: getFloatValue('rot-inv-gramaje', 0),
-        perdidoPct: getFloatValue('rot-inv-perdido-pct', 0),
-        efectos: getFloatValue('rot-inv-efectos', 1),
-        desarrollo: getFloatValue('rot-inv-desarrollo', 0),
-        arranque: getFloatValue('rot-inv-arranque', 0),
-        pliegos: getFloatValue('rot-inv-pliegos', 1)
-      };
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
+  localStorage.setItem('suiPress-darkMode', document.body.classList.contains('dark-mode'));
+}
 
-      if (inputs.efectos <= 0) {
-        showError('rot-inv-efectos', 'Efectos debe ser mayor a 0');
-        setOutputText('rot-res-display', null);
-        return;
-      }
-      clearError('rot-inv-efectos');
+if (localStorage.getItem('suiPress-darkMode') === 'true') {
+  document.body.classList.add('dark-mode');
+}
 
-      const tirada = CalculatorCore.rotativa.kilosAEjemplares(inputs);
-      setOutputText('rot-res-display', tirada, true);
-    }
+function shareResults() {
+  const modData = CONFIG[state.mod];
+  const modeData = modData.modes.find(m => m.id === state.mode);
+  let text = `SuiPress - Informe: ${modData.title} (${modeData.label})\n\nESPECIFICACIONES:\n`;
+  
+  const currentFields = modData.fields[state.mode];
+  if (currentFields) {
+    currentFields.forEach(f => {
+      const input = document.getElementById(f.id);
+      if (input) text += `- ${f.label}: ${input.value}\n`;
+    });
+  } else {
+    // For single-mode modules like 'publicaciones'
+    const defaultFields = modData.fields['std'] || [];
+    defaultFields.forEach(f => {
+      const input = document.getElementById(f.id);
+      if (input) text += `- ${f.label}: ${input.value}\n`;
+    });
   }
 
-  // 2. PLANO
-  function calculatePlano() {
-    const alto = getFloatValue('plano-alto', 0);
-    const ancho = getFloatValue('plano-ancho', 0);
-    const gramaje = getFloatValue('plano-gramaje', 0);
+  text += `\nRESULTADOS:\n`;
+  const activeResults = document.querySelectorAll('.results-area .result-block, .results-area .result-card .result-block');
+  activeResults.forEach(block => {
+    const label = block.querySelector('.result-label')?.innerText;
+    const value = block.querySelector('.result-value')?.innerText;
+    if (label && value) text += `${label}: ${value}\n`;
+  });
+  
+  text += "\nGenerado por SuiPress Engineering.";
+  
+  if (navigator.share) {
+    navigator.share({ title: 'SuiPress Result', text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => alert('Informe completo copiado al portapapeles.'));
+  }
+}
 
-    // Peso de una hoja
-    const pesoHoja = CalculatorCore.plano.calcularPesoHoja(alto, ancho, gramaje);
-    setOutputText('plano-res-peso-hoja', pesoHoja, false);
+function exportToPDF() {
+  const modData = CONFIG[state.mod];
+  const modeData = modData.modes.find(m => m.id === state.mode);
+  
+  document.getElementById('report-date').innerText = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  document.getElementById('report-id').innerText = `ID: SP-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+  document.getElementById('report-module-title').innerText = modData.title;
+  document.getElementById('report-mode-label').innerText = modeData.label;
 
-    const unitEl = document.getElementById('plano-res-unit');
+  const inputContainer = document.getElementById('report-inputs');
+  inputContainer.innerHTML = '';
+  
+  const activeFields = modData.fields[state.mode] || modData.fields['std'] || [];
+  activeFields.forEach(f => {
+    const inputElement = document.getElementById(f.id);
+    let valText = inputElement ? inputElement.value : '0';
+    if (f.options) {
+      const opt = f.options.find(o => o.value == valText);
+      if (opt && opt.value !== 'other') valText = opt.label;
+    }
+    const item = document.createElement('div');
+    item.style.display = 'flex'; item.style.justifyContent = 'space-between';
+    item.style.fontSize = '12px'; item.style.padding = '4px 0'; item.style.borderBottom = '1px solid #f0f0f0';
+    item.innerHTML = `<span style="color: #86868b;">${f.label}</span><span style="font-weight: 600;">${valText}</span>`;
+    inputContainer.appendChild(item);
+  });
 
-    if (state.planoMode === 'plAKilos') {
-      if (unitEl) unitEl.textContent = 'KILOS DE PAPEL';
-      const pliegos = getFloatValue('plano-pliegos', 0);
-      const kilos = CalculatorCore.plano.pliegosAKilos(pliegos, alto, ancho, gramaje);
-      setOutputText('plano-res-display', kilos);
-    } else {
-      if (unitEl) unitEl.textContent = 'PLIEGOS DE PAPEL';
-      const kilos = getFloatValue('plano-kilos', 0);
-      const pliegos = CalculatorCore.plano.kilosAPliegos(kilos, alto, ancho, gramaje);
-      setOutputText('plano-res-display', pliegos, true);
+  const resultsContainer = document.getElementById('report-results');
+  resultsContainer.innerHTML = '';
+  const activeResults = document.querySelectorAll('.results-area .result-block, .results-area .result-card .result-block');
+  
+  activeResults.forEach(block => {
+    const label = block.querySelector('.result-label')?.innerText;
+    const value = block.querySelector('.result-value')?.innerText;
+    if (label && value) {
+      const item = document.createElement('div');
+      item.style.padding = '20px'; item.style.background = '#f9f9fb';
+      item.style.borderRadius = '12px'; item.style.border = '1px solid #e8e8ed';
+      item.innerHTML = `
+        <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #0071e3; letter-spacing: 0.1em; font-weight: 700;">${label}</p>
+        <p style="margin: 8px 0 0; font-size: 28px; font-weight: 700; color: #1d1d1f; letter-spacing: -0.02em;">${value}</p>
+      `;
+      resultsContainer.appendChild(item);
+    }
+  });
+
+  const template = document.getElementById('pdf-template');
+  template.style.opacity = '1';
+
+  const opt = {
+    margin: [40, 40, 40, 40],
+    filename: `SuiPress_${modData.title}_${new Date().getTime()}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
+    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
+  };
+
+  setTimeout(() => {
+    html2pdf().from(document.getElementById('report-content')).set(opt).save().then(() => {
+      template.style.opacity = '0';
+    });
+  }, 150);
+}
+
+function syncEffects(id, val) {
+  if (state.mod === 'rotativa') {
+    if (id === 'efectos') {
+      const select = document.getElementById('select-efectos');
+      if (select) select.value = val;
+    }
+  } else if (state.mod === 'prensa') {
+    if (id === 'bobinaA_efectos') {
+      const select = document.getElementById('select-bobinaA_efectos');
+      if (select) select.value = val;
+    } else if (id === 'bobinaB_efectos') {
+      const select = document.getElementById('select-bobinaB_efectos');
+      if (select) select.value = val;
     }
   }
+}
 
-  // 3. PRENSA
-  function calculatePrensa() {
-    const generalInputs = {
-      paginas: getFloatValue('prensa-paginas', 0),
-      arranque: getFloatValue('prensa-arranque', 0),
-      anchoPagina: getFloatValue('prensa-ancho-pag', 0),
-      altoPagina: getFloatValue('prensa-alto-pag', 0),
-      perdidoPct: getFloatValue('prensa-perdido-pct', 0),
-      gramaje: getFloatValue('prensa-gramaje', 0),
-      arranquesVersiones: getFloatValue('prensa-versiones', 1),
-      bobinaA: {
-        ancho: getFloatValue('prensa-bobina-a-ancho', 0),
-        web: getFloatValue('prensa-bobina-a-web', 0),
-        efectos: getFloatValue('prensa-bobina-a-efectos', 1)
-      },
-      bobinaB: {
-        ancho: getFloatValue('prensa-bobina-b-ancho', 0),
-        web: getFloatValue('prensa-bobina-b-web', 0),
-        efectos: getFloatValue('prensa-bobina-b-efectos', 1)
-      }
-    };
+function updatePredefined(fieldId, selectVal) {
+  const input = document.getElementById(fieldId);
+  if (selectVal !== 'other') {
+    input.value = selectVal;
+    syncEffects(fieldId, selectVal);
+    debouncedCalculate();
+  } else {
+    input.focus();
+    input.select();
+  }
+}
 
-    // Actualizar etiquetas dinámicas de ancho de bobina
-    const lblA = document.getElementById('prensa-lbl-a');
-    const lblB = document.getElementById('prensa-lbl-b');
-    const lblInvA = document.getElementById('prensa-lbl-inv-a');
-    const lblInvB = document.getElementById('prensa-lbl-inv-b');
-    
-    if (lblA) lblA.textContent = `Kilos Bobina A (${generalInputs.bobinaA.ancho} cm)`;
-    if (lblB) lblB.textContent = `Kilos Bobina B (${generalInputs.bobinaB.ancho} cm)`;
-    if (lblInvA) lblInvA.textContent = `Desglose Bobina A (${generalInputs.bobinaA.ancho} cm)`;
-    if (lblInvB) lblInvB.textContent = `Desglose Bobina B (${generalInputs.bobinaB.ancho} cm)`;
+function handleInput(id, val) {
+  syncEffects(id, val);
+  debouncedCalculate();
+}
 
-    // Validaciones
-    if (generalInputs.bobinaA.efectos <= 0) {
-      showError('prensa-bobina-a-efectos', 'Efectos debe ser > 0');
-      clearPrensaOutputs();
-      return;
-    }
-    clearError('prensa-bobina-a-efectos');
+function renderField(f) {
+  const hasOptions = f.options && f.options.length > 0;
+  return `
+    <div class="field-box">
+      <label for="${f.id}">${f.label}</label>
+      ${hasOptions ? `
+        <select id="select-${f.id}" class="field-select" onchange="updatePredefined('${f.id}', this.value)">
+          <option value="" disabled>Seleccionar...</option>
+          ${f.options.map(o => `<option value="${o.value}" ${o.value == f.val ? 'selected' : ''}>${o.label}</option>`).join('')}
+        </select>
+      ` : ''}
+      <input type="number" id="${f.id}" value="${f.val}" oninput="handleInput('${f.id}', this.value)" step="any" aria-required="true">
+    </div>
+  `;
+}
 
-    if (generalInputs.bobinaB.efectos <= 0) {
-      showError('prensa-bobina-b-efectos', 'Efectos debe ser > 0');
-      clearPrensaOutputs();
-      return;
-    }
-    clearError('prensa-bobina-b-efectos');
+let calcTimeout;
+function debouncedCalculate() {
+  clearTimeout(calcTimeout);
+  calcTimeout = setTimeout(calculate, 50);
+}
 
-    const outputA = document.getElementById('prensa-res-ejakilos-output');
-    const outputB = document.getElementById('prensa-res-kilosej-output');
+function render() {
+  const modData = CONFIG[state.mod];
+  let fieldsHtml = '';
 
-    if (state.prensaMode === 'ejAKilos') {
-      if (outputA) outputA.classList.remove('hidden');
-      if (outputB) outputB.classList.add('hidden');
+  if (state.mod === 'prensa') {
+    const currentFields = modData.fields[state.mode];
+    const commonFields = currentFields.filter(f => !f.group);
+    const groupA = currentFields.filter(f => f.group === 'A');
+    const groupB = currentFields.filter(f => f.group === 'B');
 
-      generalInputs.tirada = getFloatValue('prensa-tirada', 0);
-      const res = CalculatorCore.prensa.ejemplaresAKilos(generalInputs);
-      
-      setOutputText('prensa-res-kilos-a', res.kilosA);
-      setOutputText('prensa-res-kilos-b', res.kilosB);
-      setOutputText('prensa-res-kilos-total', res.kilosTotal);
+    fieldsHtml = `
+      <div class="prensa-container">
+        <div class="input-grid">
+          ${commonFields.map(f => renderField(f)).join('')}
+        </div>
+        <div class="bobina-row">
+          <div class="bobina-col a">
+            <h3>Bobina A</h3>
+            ${groupA.map(f => renderField(f)).join('')}
+          </div>
+          <div class="bobina-col b">
+            <h3>Bobina B</h3>
+            ${groupB.map(f => renderField(f)).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (state.mod === 'publicaciones') {
+    const f = modData.fields[state.mode];
+    const common = f.filter(x => !x.group);
+    const sections = [
+      {id: 'int', label: 'Interior'},
+      {id: 'cub', label: 'Cubierta'},
+      {id: 'por', label: 'Portadilla'},
+      {id: 'cup', label: 'Cupón'}
+    ];
+
+    fieldsHtml = `
+      <div class="pub-container">
+        <div class="input-grid">
+          ${common.map(x => renderField(x)).join('')}
+        </div>
+        <div class="pub-grid">
+          ${sections.map(s => `
+            <div class="pub-section">
+              <h3>${s.label}</h3>
+              ${f.filter(x => x.group === s.id).map(x => renderField(x)).join('')}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    fieldsHtml = `
+      <div class="input-grid">
+        ${modData.fields[state.mode].map(f => renderField(f)).join('')}
+      </div>
+    `;
+  }
+
+  const html = `
+    <div class="module-transition" role="tabpanel" aria-labelledby="tab-${state.mod}">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; gap: 20px; flex-wrap: wrap;">
+        <div>
+          <span class="eyebrow-mod">Cálculo Dinámico</span>
+          <h2 class="h2" style="margin: 0; font-size: 32px;">${modData.title}</h2>
+        </div>
+        <div class="tabs-nav" role="tablist">
+          ${modData.modes.map(m => `
+            <button class="tab-btn ${state.mode === m.id ? 'active' : ''}" 
+              role="tab" 
+              aria-selected="${state.mode === m.id}" 
+              onclick="switchMode('${m.id}')">${m.label}</button>
+          `).join('')}
+        </div>
+      </div>
+      ${fieldsHtml}
+    </div>
+  `;
+  document.getElementById('module-container').innerHTML = html;
+  gsap.fromTo('#module-container', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" });
+  calculate();
+}
+
+function calculate() {
+  const inputs = {};
+  document.querySelectorAll('input').forEach(i => inputs[i.id] = parseFloat(i.value) || 0);
+  
+  let res = 0, sec = 0, label = "Cálculo de Consumo", secLabel = "Peso por Revolución", unit = "Kilos (kg)", extra = "";
+
+  if (state.mod === 'rotativa') {
+    const pesoRev = (inputs.gramaje / 1000) * (inputs.desarrollo / 100) * (inputs.bobina / 100) * (inputs.pliegos || 1);
+    sec = pesoRev;
+    if (state.mode === 'e2k') {
+      res = CalculatorCore.rotativa.ejemplaresAKilos(inputs);
     } else {
-      if (outputA) outputA.classList.add('hidden');
-      if (outputB) outputB.classList.remove('hidden');
+      res = CalculatorCore.rotativa.kilosAEjemplares(inputs);
+      label = "Tirada Estimada"; unit = "Ejemplares";
+    }
+  } else if (state.mod === 'plano') {
+    sec = CalculatorCore.plano.pesoHoja(inputs.alto, inputs.ancho, inputs.gramaje);
+    secLabel = "Peso por Hoja";
+    if (state.mode === 'p2k') {
+      res = CalculatorCore.plano.pliegosAKilos(inputs.pliegos, inputs.alto, inputs.ancho, inputs.gramaje);
+    } else {
+      res = CalculatorCore.plano.kilosAPliegos(inputs.kilos, inputs.alto, inputs.ancho, inputs.gramaje);
+      label = "Pliegos Estimados"; unit = "Hojas";
+    }
+  } else if (state.mod === 'prensa') {
+    sec = (inputs.paginas / 2) * (inputs.altoPagina / 100) * (inputs.desarrollo / 100) * (inputs.gramaje / 1000);
+    secLabel = "Peso por Ejemplar";
+    
+    const bobinaA = { ancho: inputs.bobinaA_ancho, web: inputs.bobinaA_web, efectos: inputs.bobinaA_efectos };
+    const bobinaB = { ancho: inputs.bobinaB_ancho, web: inputs.bobinaB_web, efectos: inputs.bobinaB_efectos };
 
-      // Kilos a Ejemplares
-      const kilosTotal = getFloatValue('prensa-inv-kilos', 0);
-      
-      // Calcular la tirada
-      const tirada = CalculatorCore.prensa.kilosAEjemplares({
-        kilosTotal,
-        ...generalInputs
+    if (state.mode === 'e2k') {
+      const p = CalculatorCore.prensa.ejemplaresAKilos({
+        ...inputs,
+        bobinaA,
+        bobinaB,
+        arranquesVersiones: inputs.versiones
       });
-      setOutputText('prensa-res-tirada', tirada, true);
-
-      // Distribuir el peso en A y B para mostrar el desglose
-      const factA = CalculatorCore.prensa.calcularFactorEfectivo(
-        generalInputs.bobinaA.ancho, 
-        generalInputs.bobinaA.web, 
-        generalInputs.bobinaA.efectos
-      );
-      const factB = CalculatorCore.prensa.calcularFactorEfectivo(
-        generalInputs.bobinaB.ancho, 
-        generalInputs.bobinaB.web, 
-        generalInputs.bobinaB.efectos
-      );
+      updateUIPrensa(p, sec, inputs.bobinaA_ancho, inputs.bobinaB_ancho);
+      return;
+    } else {
+      const factA = CalculatorCore.prensa.calcularFactorEfectivo(bobinaA.ancho, bobinaA.web, bobinaA.efectos);
+      const factB = CalculatorCore.prensa.calcularFactorEfectivo(bobinaB.ancho, bobinaB.web, bobinaB.efectos);
       const factTotal = factA + factB;
       
+      let p = { kilosA: 0, kilosB: 0, kilosTotal: inputs.kilosTotal };
       if (factTotal > 0) {
-        setOutputText('prensa-res-inv-kilos-a', kilosTotal * (factA / factTotal));
-        setOutputText('prensa-res-inv-kilos-b', kilosTotal * (factB / factTotal));
-      } else {
-        setOutputText('prensa-res-inv-kilos-a', 0);
-        setOutputText('prensa-res-inv-kilos-b', 0);
+        p.kilosA = inputs.kilosTotal * (factA / factTotal);
+        p.kilosB = inputs.kilosTotal * (factB / factTotal);
       }
+      
+      res = CalculatorCore.prensa.kilosAEjemplares({...inputs, arranquesVersiones: inputs.versiones});
+      updateUIPrensa(p, sec, inputs.bobinaA_ancho, inputs.bobinaB_ancho, true, res);
+      return;
     }
+  } else if (state.mod === 'publicaciones') {
+    const p = CalculatorCore.publicaciones.calcularTotal(inputs);
+    updateUIPublicaciones(p);
+    return;
   }
 
-  function clearPrensaOutputs() {
-    setOutputText('prensa-res-kilos-a', null);
-    setOutputText('prensa-res-kilos-b', null);
-    setOutputText('prensa-res-kilos-total', null);
-    setOutputText('prensa-res-inv-kilos-a', null);
-    setOutputText('prensa-res-inv-kilos-b', null);
-    setOutputText('prensa-res-tirada', null);
+  updateUI(res, sec, label, secLabel, unit, extra);
+}
+
+function updateUI(val, sec, label, secLabel, unit) {
+  const resultsArea = document.querySelector('.results-area');
+  resultsArea.classList.remove('prensa-mode');
+  
+  const prevVal = document.getElementById('main-result-value')?.innerText;
+  const currentVal = val.toLocaleString('es-ES', { maximumFractionDigits: 0 });
+  
+  resultsArea.innerHTML = `
+    <div class="result-block">
+      <span class="result-label">${label}</span>
+      <span class="result-value" id="main-result-value">${currentVal}</span>
+      <span style="font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 10px;">${unit}</span>
+    </div>
+    <div class="result-block">
+      <span class="result-label">${secLabel}</span>
+      <span class="result-value" style="font-size: 32px; color: var(--fg-2);">${sec.toLocaleString('es-ES', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</span>
+      <span style="font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 10px;">kg/u</span>
+    </div>
+  `;
+  
+  if (prevVal !== currentVal) {
+    gsap.fromTo('#main-result-value', { scale: 1.1, color: 'var(--accent)' }, { scale: 1, color: 'var(--fg)', duration: 0.4, ease: "power2.out" });
+  }
+  gsap.from('.result-block', { opacity: 0, y: 10, stagger: 0.1, duration: 0.3 });
+}
+
+function updateUIPrensa(p, sec, anchoA, anchoB, isK2E = false, resEjs = 0) {
+  const resultsArea = document.querySelector('.results-area');
+  resultsArea.classList.add('prensa-mode');
+  
+  const valA = p.kilosA.toLocaleString('es-ES', {maximumFractionDigits: 0});
+  const valB = p.kilosB.toLocaleString('es-ES', {maximumFractionDigits: 0});
+
+  let mainResultHtml = '';
+  if (isK2E) {
+    mainResultHtml = `
+      <div class="result-card" style="border-color: var(--accent); background: var(--surface-warm); margin-bottom: 24px;">
+        <span class="result-label">Tirada Estimada</span>
+        <span class="result-value" id="res-ejs-value" style="color: var(--accent);">${resEjs.toLocaleString('es-ES', {maximumFractionDigits: 0})}</span>
+        <span style="font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 10px;">Ejemplares</span>
+      </div>
+    `;
   }
 
-  // --- Despachador principal ---
-  function calculateAll() {
-    try {
-      if (state.activeTab === 'rotativa') {
-        calculateRotativa();
-      } else if (state.activeTab === 'plano') {
-        calculatePlano();
-      } else if (state.activeTab === 'prensa') {
-        calculatePrensa();
-      }
-    } catch (err) {
-      console.error("Error en cálculos: ", err);
-    }
-  }
-
-  // --- Ayudantes de validación visual ---
-  function showError(inputId, message) {
-    const inputEl = document.getElementById(inputId);
-    if (!inputEl) return;
-    inputEl.classList.add('border-red-500', 'focus:border-red-500');
+  resultsArea.innerHTML = `
+    ${mainResultHtml}
     
-    // Buscar o crear etiqueta de error debajo del input
-    let errorEl = inputEl.parentNode.querySelector('.error-msg');
-    if (!errorEl) {
-      errorEl = document.createElement('p');
-      errorEl.className = 'error-msg text-red-500 text-xs mt-1 font-sans';
-      inputEl.parentNode.appendChild(errorEl);
-    }
-    errorEl.textContent = message;
+    <div class="result-card accent-blue">
+      <!-- Bobina A -->
+      <div class="result-block">
+        <span class="result-label" style="color: var(--accent);">Consumo Bobina A</span>
+        <span class="result-value" id="kilosA-value" style="margin-top: 8px;">${valA} <small style="font-size: 18px; color: var(--meta);">kg</small></span>
+        <span class="result-value" style="font-size: 56px; color: var(--accent); margin-top: 16px;">${anchoA} <small style="font-size: 18px;">cm</small></span>
+        <span class="result-label" style="margin-top: 4px;">Ancho Bobina A</span>
+      </div>
+
+      <div style="height: 1px; background: var(--border); margin: 40px 0; opacity: 0.5;"></div>
+
+      <!-- Bobina B -->
+      <div class="result-block">
+        <span class="result-label" style="color: var(--accent);">Consumo Bobina B</span>
+        <span class="result-value" id="kilosB-value" style="margin-top: 8px;">${valB} <small style="font-size: 18px; color: var(--meta);">kg</small></span>
+        <span class="result-value" style="font-size: 56px; color: var(--accent); margin-top: 16px;">${anchoB} <small style="font-size: 18px;">cm</small></span>
+        <span class="result-label" style="margin-top: 4px;">Ancho Bobina B</span>
+      </div>
+
+      <div style="height: 1px; background: var(--border); margin: 40px 0; opacity: 0.5;"></div>
+
+      <!-- Peso por Ejemplar -->
+      <div class="result-block">
+        <span class="result-label">Peso Total por Ejemplar</span>
+        <span class="result-value" style="font-size: 32px; color: var(--fg-2); margin-top: 8px;">${sec.toLocaleString('es-ES', {minimumFractionDigits: 4, maximumFractionDigits: 4})} <small style="font-size: 18px; color: var(--muted);">kg/u</small></span>
+      </div>
+    </div>
+  `;
+
+  gsap.from('.result-card', { opacity: 0, scale: 0.98, y: 20, stagger: 0.1, duration: 0.5, ease: "power2.out" });
+}
+
+function updateUIPublicaciones(p) {
+  const resultsArea = document.querySelector('.results-area');
+  resultsArea.classList.remove('prensa-mode');
+  
+  const prevVal = document.getElementById('pub-total-value')?.innerText;
+  const currentVal = p.totalTirada.toLocaleString('es-ES', { maximumFractionDigits: 0 });
+
+  resultsArea.innerHTML = `
+    <div class="result-block">
+      <span class="result-label">Peso Total Tirada</span>
+      <span class="result-value" id="pub-total-value">${currentVal}</span>
+      <span style="font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 10px;">Kilos (kg)</span>
+    </div>
+    <div class="result-block">
+      <span class="result-label">Peso 1 Ejemplar</span>
+      <span class="result-value" style="font-size: 32px; color: var(--fg-2);">${p.pesoUnitario.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      <span style="font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 10px;">Gramos (gr)</span>
+    </div>
+    <div style="width: 100%; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--meta);">
+      * Incluye un 1% adicional estimado por peso de tinta.
+    </div>
+  `;
+
+  if (prevVal !== currentVal) {
+    gsap.fromTo('#pub-total-value', { scale: 1.1, color: 'var(--accent)' }, { scale: 1, color: 'var(--fg)', duration: 0.4, ease: "power2.out" });
   }
+  gsap.from('.results-area .result-block', { opacity: 0, y: 10, stagger: 0.1, duration: 0.3 });
+}
 
-  function clearError(inputId) {
-    const inputEl = document.getElementById(inputId);
-    if (!inputEl) return;
-    inputEl.classList.remove('border-red-500', 'focus:border-red-500');
-    
-    const errorEl = inputEl.parentNode.querySelector('.error-msg');
-    if (errorEl) {
-      errorEl.remove();
-    }
-  }
-
-  // --- Módulo para Compartir (Email y PDF) ---
-  function initShareModal() {
-    const shareModal = document.getElementById('share-modal');
-    if (!shareModal) return;
-
-    const shareCloseBtn = document.getElementById('share-close-btn');
-    const shareEmailBtn = document.getElementById('share-email-btn');
-    const sharePdfBtn = document.getElementById('share-pdf-btn');
-    const shareTriggerBtns = document.querySelectorAll('.share-trigger-btn');
-
-    // Abrir modal
-    shareTriggerBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        shareModal.classList.remove('hidden');
-      });
-    });
-
-    // Cerrar modal
-    const closeModal = () => {
-      shareModal.classList.add('hidden');
-    };
-
-    if (shareCloseBtn) {
-      shareCloseBtn.addEventListener('click', closeModal);
-    }
-
-    shareModal.addEventListener('click', (e) => {
-      if (e.target === shareModal) {
-        closeModal();
-      }
-    });
-
-    // Recopilar datos según el tab activo y modo
-    function getCalculationReportData() {
-      const data = {
-        modulo: '',
-        modo: '',
-        entradas: [],
-        resultado: '',
-        unidad: ''
-      };
-
-      const dateStr = new Date().toLocaleDateString('es-ES');
-      data.fecha = dateStr;
-
-      if (state.activeTab === 'rotativa') {
-        data.modulo = 'Rotativa';
-        if (state.rotativaMode === 'ejAKilos') {
-          data.modo = 'Ejemplares a Kilos';
-          data.unidad = 'Kilos de Papel';
-          data.resultado = document.getElementById('rot-res-display')?.textContent || '---';
-          data.entradas = [
-            { label: 'Tirada (Ejemplares)', id: 'rot-tirada' },
-            { label: 'Vueltas Arranque', id: 'rot-vueltas-arranque' },
-            { label: '% Perdido (Merma)', id: 'rot-perdido-pct', suffix: '%' },
-            { label: 'Gramaje (g)', id: 'rot-gramaje', suffix: ' g' },
-            { label: 'Pliegos', id: 'rot-pliegos' },
-            { label: 'Efectos', id: 'rot-efectos' },
-            { label: 'Desarrollo (cm)', id: 'rot-desarrollo', suffix: ' cm' },
-            { label: 'Bobina (cm)', id: 'rot-bobina', suffix: ' cm' },
-            { label: 'Cambios 4/0', id: 'rot-cambios-40' },
-            { label: 'Vueltas Merma 4/0', id: 'rot-merma-40' },
-            { label: 'Cambios 4/4', id: 'rot-cambios-44' },
-            { label: 'Vueltas Merma 4/4', id: 'rot-merma-44' }
-          ];
-        } else {
-          data.modo = 'Kilos a Ejemplares';
-          data.unidad = 'Ejemplares (Tirada)';
-          data.resultado = document.getElementById('rot-res-display')?.textContent || '---';
-          data.entradas = [
-            { label: 'Kilos Disponibles', id: 'rot-inv-kilos', suffix: ' kg' },
-            { label: 'Bobina (cm)', id: 'rot-inv-bobina', suffix: ' cm' },
-            { label: 'Gramaje (g)', id: 'rot-inv-gramaje', suffix: ' g' },
-            { label: '% Perdido (Merma)', id: 'rot-inv-perdido-pct', suffix: '%' },
-            { label: 'Efectos', id: 'rot-inv-efectos' },
-            { label: 'Desarrollo (cm)', id: 'rot-inv-desarrollo', suffix: ' cm' },
-            { label: 'Pliegos', id: 'rot-inv-pliegos' },
-            { label: 'Vueltas de Arranque', id: 'rot-inv-arranque' }
-          ];
-        }
-      } else if (state.activeTab === 'plano') {
-        data.modulo = 'Plano';
-        const pesoHoja = document.getElementById('plano-res-peso-hoja')?.textContent || '---';
-        if (state.planoMode === 'plAKilos') {
-          data.modo = 'Pliegos a Kilos';
-          data.unidad = 'Kilos de Papel';
-          data.resultado = document.getElementById('plano-res-display')?.textContent || '---';
-          data.entradas = [
-            { label: 'Cantidad de Pliegos', id: 'plano-pliegos' },
-            { label: 'Alto (cm)', id: 'plano-alto', suffix: ' cm' },
-            { label: 'Ancho (cm)', id: 'plano-ancho', suffix: ' cm' },
-            { label: 'Gramaje (g)', id: 'plano-gramaje', suffix: ' g' },
-            { label: 'Peso de una sola hoja', value: pesoHoja + ' kg' }
-          ];
-        } else {
-          data.modo = 'Kilos a Pliegos';
-          data.unidad = 'Pliegos de Papel';
-          data.resultado = document.getElementById('plano-res-display')?.textContent || '---';
-          data.entradas = [
-            { label: 'Kilos Totales', id: 'plano-kilos', suffix: ' kg' },
-            { label: 'Alto (cm)', id: 'plano-alto', suffix: ' cm' },
-            { label: 'Ancho (cm)', id: 'plano-ancho', suffix: ' cm' },
-            { label: 'Gramaje (g)', id: 'plano-gramaje', suffix: ' g' },
-            { label: 'Peso de una sola hoja', value: pesoHoja + ' kg' }
-          ];
-        }
-      } else if (state.activeTab === 'prensa') {
-        data.modulo = 'Prensa';
-        const generalEntradas = [
-          { label: 'Páginas Totales', id: 'prensa-paginas' },
-          { label: 'Gramaje (g)', id: 'prensa-gramaje', suffix: ' g' },
-          { label: 'Ancho Página (cm)', id: 'prensa-ancho-pag', suffix: ' cm' },
-          { label: 'Alto Página (cm)', id: 'prensa-alto-pag', suffix: ' cm' },
-          { label: 'Arranque (Ejemplares)', id: 'prensa-arranque' },
-          { label: 'Arranques V.', id: 'prensa-versiones' },
-          { label: '% Perdido (Merma)', id: 'prensa-perdido-pct', suffix: '%' },
-          { label: 'Ancho Bobina A (cm)', id: 'prensa-bobina-a-ancho', suffix: ' cm' },
-          { label: 'Web Bobina A', id: 'prensa-bobina-a-web' },
-          { label: 'Efectos Bobina A', id: 'prensa-bobina-a-efectos' },
-          { label: 'Ancho Bobina B (cm)', id: 'prensa-bobina-b-ancho', suffix: ' cm' },
-          { label: 'Web Bobina B', id: 'prensa-bobina-b-web' },
-          { label: 'Efectos Bobina B', id: 'prensa-bobina-b-efectos' }
-        ];
-
-        if (state.prensaMode === 'ejAKilos') {
-          data.modo = 'Ejemplares a Kilos';
-          data.unidad = 'Kilos de Papel';
-          data.resultado = document.getElementById('prensa-res-kilos-total')?.textContent || '---';
-          
-          const kilosA = document.getElementById('prensa-res-kilos-a')?.textContent || '---';
-          const kilosB = document.getElementById('prensa-res-kilos-b')?.textContent || '---';
-          const bobinaAAncho = document.getElementById('prensa-bobina-a-ancho')?.value || '---';
-          const bobinaBAncho = document.getElementById('prensa-bobina-b-ancho')?.value || '---';
-
-          data.entradas = [
-            { label: 'Tirada Objetivo (Ejemplares)', id: 'prensa-tirada' },
-            ...generalEntradas,
-            { label: `Kilos Bobina A (${bobinaAAncho} cm)`, value: kilosA + ' kg' },
-            { label: `Kilos Bobina B (${bobinaBAncho} cm)`, value: kilosB + ' kg' }
-          ];
-        } else {
-          data.modo = 'Kilos a Ejemplares';
-          data.unidad = 'Ejemplares (Tirada)';
-          data.resultado = document.getElementById('prensa-res-tirada')?.textContent || '---';
-          
-          const kilosTotal = document.getElementById('prensa-inv-kilos')?.value || '---';
-          const desgloseA = document.getElementById('prensa-res-inv-kilos-a')?.textContent || '---';
-          const desgloseB = document.getElementById('prensa-res-inv-kilos-b')?.textContent || '---';
-          const bobinaAAncho = document.getElementById('prensa-bobina-a-ancho')?.value || '---';
-          const bobinaBAncho = document.getElementById('prensa-bobina-b-ancho')?.value || '---';
-
-          data.entradas = [
-            { label: 'Kilos Totales Disponibles', value: kilosTotal + ' kg' },
-            ...generalEntradas,
-            { label: `Desglose Bobina A (${bobinaAAncho} cm)`, value: desgloseA + ' kg' },
-            { label: `Desglose Bobina B (${bobinaBAncho} cm)`, value: desgloseB + ' kg' }
-          ];
-        }
-      }
-
-      // Procesar valores de inputs de forma amigable
-      data.entradas = data.entradas.map(item => {
-        if (item.value !== undefined) return item;
-        const inputEl = document.getElementById(item.id);
-        let valText = '---';
-        if (inputEl) {
-          const rawVal = parseFloat(inputEl.value);
-          if (!isNaN(rawVal)) {
-            valText = new Intl.NumberFormat('es-ES').format(rawVal);
-          } else {
-            valText = inputEl.value;
-          }
-        }
-        return {
-          label: item.label,
-          value: valText + (item.suffix || '')
-        };
-      });
-
-      return data;
-    }
-
-    // Compartir por Email
-    if (shareEmailBtn) {
-      shareEmailBtn.addEventListener('click', () => {
-        const report = getCalculationReportData();
-        const subject = `Reporte de Consumo - SuiPress Pro [${report.modulo}]`;
-        
-        let body = `SuiPress Pro - Reporte Técnico\r\n`;
-        body += `=========================================\r\n`;
-        body += `Fecha: ${report.fecha}\r\n`;
-        body += `Módulo: ${report.modulo}\r\n`;
-        body += `Tipo de Cálculo: ${report.modo}\r\n\r\n`;
-        
-        body += `DATOS DE ENTRADA:\r\n`;
-        report.entradas.forEach(item => {
-          body += `- ${item.label}: ${item.value}\r\n`;
-        });
-        
-        body += `\r\nRESULTADO ESTIMADO FINAL:\r\n`;
-        body += `➔ ${report.resultado} ${report.unidad}\r\n\r\n`;
-        
-        body += `-----------------------------------------\r\n`;
-        body += `Este reporte fue generado de forma stateless y local desde la app SuiPress Pro.\r\n`;
-
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        closeModal();
-      });
-    }
-
-    // Compartir por PDF (Impresión del Navegador)
-    if (sharePdfBtn) {
-      sharePdfBtn.addEventListener('click', () => {
-        const report = getCalculationReportData();
-        
-        // Rellenar área invisible de impresión
-        const printDateEl = document.getElementById('print-date');
-        const printModuleEl = document.getElementById('print-module-name');
-        const printModeEl = document.getElementById('print-calculation-mode');
-        const printResultValEl = document.getElementById('print-result-val');
-        const printResultUnitEl = document.getElementById('print-result-unit-label');
-        const printTableBody = document.querySelector('#print-inputs-table tbody');
-
-        if (printDateEl) printDateEl.textContent = `Fecha: ${report.fecha}`;
-        if (printModuleEl) printModuleEl.textContent = report.modulo;
-        if (printModeEl) printModeEl.textContent = report.modo;
-        if (printResultValEl) printResultValEl.textContent = report.resultado;
-        if (printResultUnitEl) printResultUnitEl.textContent = report.unidad;
-
-        if (printTableBody) {
-          printTableBody.innerHTML = '';
-          report.entradas.forEach(item => {
-            const tr = document.createElement('tr');
-            const tdLabel = document.createElement('td');
-            tdLabel.textContent = item.label;
-            tdLabel.style.fontWeight = '500';
-            const tdVal = document.createElement('td');
-            tdVal.textContent = item.value;
-            tdVal.style.textAlign = 'right';
-            tdVal.style.fontFamily = 'monospace';
-            
-            tr.appendChild(tdLabel);
-            tr.appendChild(tdVal);
-            printTableBody.appendChild(tr);
-          });
-        }
-
-        closeModal();
-        
-        // Dar un pequeño delay para que se renderice el DOM oculto antes de disparar la impresión
-        setTimeout(() => {
-          window.print();
-        }, 150);
-      });
-    }
-  }
-
-  // --- Ejecución Inicial ---
-  initTheme();
-  initNavigation();
-  bindInputs();
-  initShareModal();
-  calculateAll();
-});
+switchModule('rotativa');

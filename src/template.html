@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="SuiPress: Calculadora Industrial de Precisión para Artes Gráficas" />
+  <title>SuiPress · Precisión Gráfica Industrial</title>
+  <style>
+    /* STYLES_PLACEHOLDER */
+  </style>
+</head>
+<body>
+
+  <nav class="topnav" aria-label="Navegación principal">
+    <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-weight: 700; font-size: 20px; letter-spacing: -0.03em; display: flex; align-items: center; gap: 8px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="fill: var(--accent);">
+          <path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z" />
+        </svg>
+        SuiPress
+      </span>
+      
+      <div style="display: flex; align-items: center; gap: 24px;">
+        <div style="font-size: 13px; font-weight: 600; opacity: 0.8;" class="nav-info">Artes Gráficas</div>
+        
+        <div class="menu-container">
+          <button class="menu-trigger" onclick="toggleMenu()" id="tools-trigger">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+            Herramientas
+          </button>
+          <div class="menu-dropdown" id="tools-menu">
+            <button class="menu-item" onclick="toggleDarkMode(); toggleMenu();">
+              <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
+              Modo Noche
+            </button>
+            <button class="menu-item" onclick="shareResults(); toggleMenu();">
+              <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z"/></svg>
+              Compartir Cálculo
+            </button>
+            <button class="menu-item" onclick="exportToPDF(); toggleMenu();">
+              <svg viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3.5h-1.25v1.5h1.25V11H19v-1.5h-1.25V7H20.5v1.5zM9 9.5h1v-1H9v1zM14 10.5h1v-2h-1v2zM2 6v14c0 1.1.9 2 2 2h14v-2H4V6H2z"/></svg>
+              Descargar Informe PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <header class="section container animate-reveal" style="text-align: center;">
+    <span class="eyebrow" style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: var(--accent); margin-bottom: 16px; display: block;">Artes Gráficas · Taller</span>
+    <h1 class="h1">Precisión Gráfica.<br>Rendimiento Industrial.</h1>
+    <p class="muted" style="font-size: 22px; max-width: 640px; margin-inline: auto; font-weight: 400; margin-top: 24px; line-height: 1.3;">
+      Calcula con la velocidad del taller y la claridad de un experto. SuiPress ofrece precisión quirúrgica para cada tirada.
+    </p>
+  </header>
+
+  <main class="container animate-reveal" style="padding-bottom: 100px;">
+    <div class="glass-card stack" role="region" aria-label="Herramienta de cálculo">
+      
+      <div class="tabs-nav" role="tablist" aria-label="Módulos de cálculo">
+        <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="module-container" id="tab-rotativa" onclick="switchModule('rotativa')">Comercial</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="module-container" id="tab-plano" onclick="switchModule('plano')">Pliego</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="module-container" id="tab-prensa" onclick="switchModule('prensa')">Prensa</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="module-container" id="tab-publicaciones" onclick="switchModule('publicaciones')">Publicaciones</button>
+      </div>
+
+      <div id="module-container" aria-live="polite">
+        <!-- Render dinámico aquí -->
+      </div>
+
+      <div class="results-area" aria-live="polite">
+        <!-- Resultados se inyectan aquí -->
+      </div>
+
+    </div>
+  </main>
+
+  <!-- PDF Report Template (Hidden but Renderable) -->
+  <div id="pdf-template" style="position: absolute; left: -9999px; top: 0; opacity: 0; pointer-events: none; z-index: -1;">
+    <div id="report-content" style="width: 800px; padding: 60px; background: white; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Helvetica, Arial, sans-serif; color: #1d1d1f;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0071e3; padding-bottom: 20px; margin-bottom: 40px;">
+        <div>
+          <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.02em;">SuiPress <span style="color: #0071e3;">Report</span></h1>
+          <p style="margin: 5px 0 0; font-size: 12px; color: #86868b; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">Informe de Precisión Técnica</p>
+        </div>
+        <div style="text-align: right;">
+          <p id="report-date" style="margin: 0; font-size: 14px; color: #1d1d1f; font-weight: 600;"></p>
+          <p id="report-id" style="margin: 5px 0 0; font-size: 12px; color: #86868b;"></p>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 40px;">
+        <h2 id="report-module-title" style="font-size: 22px; font-weight: 600; margin-bottom: 10px;"></h2>
+        <p id="report-mode-label" style="font-size: 14px; color: #0071e3; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;"></p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 60px;">
+        <div>
+          <h3 style="font-size: 12px; text-transform: uppercase; color: #86868b; letter-spacing: 0.1em; margin-bottom: 20px; border-bottom: 1px solid #d2d2d7; padding-bottom: 8px;">Especificaciones Técnicas</h3>
+          <div id="report-inputs" style="display: flex; flex-direction: column; gap: 12px;"></div>
+        </div>
+        <div>
+          <h3 style="font-size: 12px; text-transform: uppercase; color: #86868b; letter-spacing: 0.1em; margin-bottom: 20px; border-bottom: 1px solid #d2d2d7; padding-bottom: 8px;">Resultados de Cálculo</h3>
+          <div id="report-results" style="display: flex; flex-direction: column; gap: 24px;"></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 100px; padding-top: 20px; border-top: 1px solid #d2d2d7; display: flex; justify-content: space-between; font-size: 11px; color: #86868b;">
+        <span>SuiPress Engineering · Artes Gráficas</span>
+        <span>v2.4.0 · Informe Autenticado</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <p style="font-weight: 500;">&copy; 2026 SuiPress · Ingeniería de Precisión · Despliegue Intranet</p>
+      <div style="margin-top: 16px; display: flex; justify-content: center; gap: 24px; opacity: 0.6; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
+        <span>Seguridad de Datos</span>
+        <span>Modo Offline</span>
+        <span>v2.4.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>
+    /* CALCULATOR_CORE_PLACEHOLDER */
+    /* UI_CONTROLLER_PLACEHOLDER */
+  </script>
+</body>
+</html>

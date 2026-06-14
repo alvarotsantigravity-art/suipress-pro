@@ -10,20 +10,6 @@ const CalculatorCore = {
   rotativa: {
     /**
      * Calcula Kilos a partir de Ejemplares (Tirada)
-     * @param {Object} params
-     * @param {number} params.vueltasArranque - Vueltas de arranque (B)
-     * @param {number} params.perdidoPct - % Perdido (C) (ej: 8.5 para 8.5%)
-     * @param {number} params.tirada - Tirada en ejemplares (D)
-     * @param {number} params.gramaje - Gramaje en g/m² (E)
-     * @param {number} params.pliegos - Pliegos (F)
-     * @param {number} params.efectos - Efectos (G)
-     * @param {number} params.desarrollo - Desarrollo en cm (H)
-     * @param {number} params.bobina - Ancho bobina en cm (I)
-     * @param {number} params.cambios4_0 - Cambios 4/0 (K)
-     * @param {number} params.mermaCambio4_0 - Merma por cambio 4/0 (L)
-     * @param {number} params.cambios4_4 - Cambios 4/4 (M)
-     * @param {number} params.mermaCambio4_4 - Merma por cambio 4/4 (N)
-     * @returns {number} Kilos calculados
      */
     ejemplaresAKilos({
       vueltasArranque = 0,
@@ -59,16 +45,6 @@ const CalculatorCore = {
 
     /**
      * Calcula Ejemplares (Tirada) a partir de Kilos
-     * @param {Object} params
-     * @param {number} params.kilos - Kilos objetivo (B)
-     * @param {number} params.bobina - Ancho bobina en cm (C)
-     * @param {number} params.gramaje - Gramaje en g/m² (D)
-     * @param {number} params.perdidoPct - % Perdido (E) (ej: 8.0 para 8%)
-     * @param {number} params.efectos - Efectos (G)
-     * @param {number} params.desarrollo - Desarrollo en cm (H)
-     * @param {number} params.arranque - Vueltas de arranque (I)
-     * @param {number} [params.pliegos=1] - Pliegos (opcional)
-     * @returns {number} Tirada (Ejemplares)
      */
     kilosAEjemplares({
       kilos = 0,
@@ -105,40 +81,31 @@ const CalculatorCore = {
   plano: {
     /**
      * Calcula el peso de una sola hoja en kg
-     * @param {number} alto - Alto en cm
-     * @param {number} ancho - Ancho en cm
-     * @param {number} gramaje - Gramaje en g/m²
-     * @returns {number} Peso de la hoja en kg
      */
-    calcularPesoHoja(alto, ancho, gramaje) {
+    pesoHoja(alto, ancho, gramaje) {
       return (alto / 100) * (ancho / 100) * (gramaje / 1000);
+    },
+
+    // Para mantener compatibilidad con tests anteriores
+    calcularPesoHoja(alto, ancho, gramaje) {
+      return this.pesoHoja(alto, ancho, gramaje);
     },
 
     /**
      * Convierte Pliegos a Kilos
-     * @param {number} pliegos - Cantidad de pliegos
-     * @param {number} alto - Alto en cm
-     * @param {number} ancho - Ancho en cm
-     * @param {number} gramaje - Gramaje en g/m²
-     * @returns {number} Kilos resultantes
      */
     pliegosAKilos(pliegos, alto, ancho, gramaje) {
-      const pesoHoja = this.calcularPesoHoja(alto, ancho, gramaje);
-      return pesoHoja * pliegos;
+      const ph = this.pesoHoja(alto, ancho, gramaje);
+      return ph * pliegos;
     },
 
     /**
      * Convierte Kilos a Pliegos
-     * @param {number} kilos - Kilos de papel
-     * @param {number} alto - Alto en cm
-     * @param {number} ancho - Ancho en cm
-     * @param {number} gramaje - Gramaje en g/m²
-     * @returns {number} Pliegos resultantes
      */
     kilosAPliegos(kilos, alto, ancho, gramaje) {
-      const pesoHoja = this.calcularPesoHoja(alto, ancho, gramaje);
-      if (pesoHoja === 0) return 0;
-      return kilos / pesoHoja;
+      const ph = this.pesoHoja(alto, ancho, gramaje);
+      if (ph === 0) return 0;
+      return kilos / ph;
     }
   },
 
@@ -148,10 +115,6 @@ const CalculatorCore = {
   prensa: {
     /**
      * Calcula el factor de ancho de bobina efectivo
-     * @param {number} anchoBobina - Ancho bobina en cm
-     * @param {number} web - Web (cantidad de bandas)
-     * @param {number} efectos - Efectos
-     * @returns {number} Factor efectivo
      */
     calcularFactorEfectivo(anchoBobina, web, efectos) {
       if (efectos === 0) return 0;
@@ -160,30 +123,13 @@ const CalculatorCore = {
 
     /**
      * Calcula Kilos por bobina y Total de Ejemplares a Kilos
-     * @param {Object} params
-     * @param {number} params.paginas - Páginas totales (B26)
-     * @param {number} params.tirada - Tirada en ejemplares (B27)
-     * @param {number} params.arranque - Arranque en ejemplares (B28)
-     * @param {number} params.anchoPagina - Ancho de página en cm (B29)
-     * @param {number} params.altoPagina - Alto de página en cm (B30)
-     * @param {number} params.perdidoPct - % Perdido (B31) (ej: 7.5 para 7.5%)
-     * @param {number} params.gramaje - Gramaje en g/m² (B33)
-     * @param {number} params.arranquesVersiones - Arranques de versiones (B34)
-     * @param {Object} params.bobinaA - Parámetros bobina A
-     * @param {number} params.bobinaA.ancho - Ancho bobina A en cm (B35)
-     * @param {number} params.bobinaA.web - Web A (C35)
-     * @param {number} params.bobinaA.efectos - Efectos A (D35)
-     * @param {Object} params.bobinaB - Parámetros bobina B
-     * @param {number} params.bobinaB.ancho - Ancho bobina B en cm (B36)
-     * @param {number} params.bobinaB.web - Web B (C36)
-     * @param {number} params.bobinaB.efectos - Efectos B (D36)
-     * @returns {Object} { kilosA, kilosB, kilosTotal }
      */
     ejemplaresAKilos({
       paginas = 0,
       tirada = 0,
       arranque = 0,
       anchoPagina = 0,
+      desarrollo = 0,
       altoPagina = 0,
       perdidoPct = 0,
       gramaje = 0,
@@ -199,14 +145,14 @@ const CalculatorCore = {
         return { kilosA: 0, kilosB: 0, kilosTotal: 0 };
       }
 
-      // Total de ejemplares considerando tirada con pérdida y arranques de versión
       const ejemplaresTotal = tirada * (1 + (perdidoPct / 100)) + (arranquesVersiones * arranque);
 
-      // Peso total calculado según la fórmula original
+      const d = desarrollo || anchoPagina;
+
       const pesoTotal = 
         (paginas / 2) * 
         (altoPagina / 100) * 
-        (anchoPagina / 100) * 
+        (d / 100) * 
         (gramaje / 1000) * 
         ejemplaresTotal;
 
@@ -222,22 +168,13 @@ const CalculatorCore = {
 
     /**
      * Calcula la Tirada (Ejemplares) a partir de los Kilos Totales (inversa)
-     * @param {Object} params
-     * @param {number} params.kilosTotal - Kilos totales objetivo
-     * @param {number} params.paginas - Páginas totales (B26)
-     * @param {number} params.arranque - Arranque en ejemplares (B28)
-     * @param {number} params.anchoPagina - Ancho de página en cm (B29)
-     * @param {number} params.altoPagina - Alto de página en cm (B30)
-     * @param {number} params.perdidoPct - % Perdido (B31) (ej: 7.5 para 7.5%)
-     * @param {number} params.gramaje - Gramaje en g/m² (B33)
-     * @param {number} params.arranquesVersiones - Arranques de versiones (B34)
-     * @returns {number} Tirada estimada
      */
     kilosAEjemplares({
       kilosTotal = 0,
       paginas = 0,
       arranque = 0,
       anchoPagina = 0,
+      desarrollo = 0,
       altoPagina = 0,
       perdidoPct = 0,
       gramaje = 0,
@@ -245,22 +182,52 @@ const CalculatorCore = {
     }) {
       if (kilosTotal === 0) return 0;
 
+      const d = desarrollo || anchoPagina;
+
       const pesoPorEjemplarKg = 
         (paginas / 2) * 
         (altoPagina / 100) * 
-        (anchoPagina / 100) * 
+        (d / 100) * 
         (gramaje / 1000);
 
       if (pesoPorEjemplarKg === 0) return 0;
 
-      // Despejando:
-      // KilosTotal = pesoPorEjemplarKg * (Tirada * (1 + perdido/100) + V * Arr)
-      // Tirada * (1 + perdido/100) = (KilosTotal / pesoPorEjemplarKg) - V * Arr
       const totalEjemplaresDeTirada = (kilosTotal / pesoPorEjemplarKg) - (arranquesVersiones * arranque);
       
       const factorPerdida = 1 + (perdidoPct / 100);
       
       return totalEjemplaresDeTirada / factorPerdida;
+    }
+  },
+
+  /**
+   * Módulo 4: PUBLICACIONES
+   */
+  publicaciones: {
+    /**
+     * Calcula el peso de una parte de la publicación en kg
+     */
+    pesoParte(ancho, alto, gramaje, paginas) {
+      return (ancho / 100) * (alto / 100) * (gramaje / 1000) * (paginas / 2);
+    },
+
+    /**
+     * Calcula el total de pesos de la publicación
+     */
+    calcularTotal(inputs) {
+      const pInterior = this.pesoParte(inputs.pub_ancho, inputs.pub_alto, inputs.pub_int_gramaje, inputs.pub_int_paginas);
+      const pCubierta = this.pesoParte(inputs.pub_ancho, inputs.pub_alto, inputs.pub_cub_gramaje, inputs.pub_cub_paginas);
+      const pPortadilla = this.pesoParte(inputs.pub_ancho, inputs.pub_alto, inputs.pub_por_gramaje, inputs.pub_por_paginas);
+      const pCupon = this.pesoParte(inputs.pub_ancho, inputs.pub_alto, inputs.pub_cup_gramaje, inputs.pub_cup_paginas);
+      
+      const pesoUnitario = pInterior + pCubierta + pPortadilla + pCupon;
+      const conTinta = pesoUnitario * 1.01; // +1% por tinta
+      const totalTirada = conTinta * inputs.pub_tirada;
+      
+      return { 
+        pesoUnitario: conTinta * 1000, // pesoUnitario en gramos
+        totalTirada 
+      };
     }
   }
 };
