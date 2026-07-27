@@ -232,15 +232,13 @@ function shareResults() {
   const currentFields = modData.fields[state.mode];
   if (currentFields) {
     currentFields.forEach(f => {
-      const input = document.getElementById(f.id);
-      if (input) text += `- ${f.label}: ${input.value}\n`;
+      text += `- ${f.label}: ${getFieldValue(f.id)}\n`;
     });
   } else {
     // For single-mode modules like 'publicaciones'
     const defaultFields = modData.fields['std'] || [];
     defaultFields.forEach(f => {
-      const input = document.getElementById(f.id);
-      if (input) text += `- ${f.label}: ${input.value}\n`;
+      text += `- ${f.label}: ${getFieldValue(f.id)}\n`;
     });
   }
 
@@ -275,8 +273,7 @@ function exportToPDF() {
   
   const activeFields = modData.fields[state.mode] || modData.fields['std'] || [];
   activeFields.forEach(f => {
-    const inputElement = document.getElementById(f.id);
-    let valText = inputElement ? inputElement.value : '0';
+    let valText = getFieldValue(f.id) || '0';
     if (f.options) {
       const opt = f.options.find(o => o.value == valText);
       if (opt && opt.value !== 'other') valText = opt.label;
@@ -325,52 +322,128 @@ function exportToPDF() {
   }, 150);
 }
 
-function syncEffects(id, val) {
-  if (state.mod === 'rotativa') {
-    if (id === 'efectos') {
-      const select = document.getElementById('select-efectos');
-      if (select) select.value = val;
+const formState = {};
+
+function currentFormKey() {
+  return `${state.mod}:${state.mode}`;
+}
+
+function getCurrentFields() {
+  return CONFIG[state.mod].fields[state.mode] || CONFIG[state.mod].fields.std || [];
+}
+
+function getFormState() {
+  const key = currentFormKey();
+  if (!formState[key]) {
+    formState[key] = { values: {}, presets: {} };
+    getCurrentFields().forEach(field => {
+      formState[key].values[field.id] = String(field.val).replace('.', ',');
+      if (field.options) formState[key].presets[field.id] = field.options.some(option => String(option.value) === String(field.val)) ? String(field.val) : 'other';
+    });
+  }
+  return formState[key];
+}
+
+function getFieldValue(fieldId) {
+  return getFormState().values[fieldId] ?? '';
+}
+
+function parseInputValue(rawValue) {
+  return CalculatorCore.normalizarNumeroEntrada(rawValue);
+}
+
+function isIntegerField(field) {
+  return /tirada|pliegos|paginas|efectos|versiones|_web$|arranque|vueltas/i.test(field.id);
+}
+
+function allowsZero(field) {
+  return /perdidoPct|arranque|vueltas|pub_(por|cup)_/i.test(field.id);
+}
+
+function validateField(field, rawValue) {
+  const value = parseInputValue(rawValue);
+  if (value === null) return 'Introduce un número válido.';
+  if (value < 0) return 'No puede ser negativo.';
+  if (!allowsZero(field) && value === 0) return 'Debe ser mayor que cero.';
+  if (isIntegerField(field) && !Number.isInteger(value)) return 'Debe ser un número entero.';
+  if (/paginas/i.test(field.id) && value % 2 !== 0) return 'El número de páginas debe ser par.';
+  return '';
+}
+
+function validateCurrentForm() {
+  const fields = getCurrentFields();
+  const values = {};
+  const errors = {};
+  fields.forEach(field => {
+    const rawValue = getFieldValue(field.id);
+    const error = validateField(field, rawValue);
+    if (error) errors[field.id] = error;
+    else values[field.id] = parseInputValue(rawValue);
+  });
+  return { values, errors, isValid: Object.keys(errors).length === 0 };
+}
+
+function applyValidation(validation) {
+  getCurrentFields().forEach(field => {
+    const error = validation.errors[field.id] || '';
+    const input = document.getElementById(field.id);
+    const container = document.getElementById(`field-${field.id}`);
+    const message = document.getElementById(`error-${field.id}`);
+    if (input) {
+      input.classList.toggle('is-invalid', Boolean(error));
+      input.setAttribute('aria-invalid', String(Boolean(error)));
     }
-  } else if (state.mod === 'prensa') {
-    if (id === 'bobinaA_efectos') {
-      const select = document.getElementById('select-bobinaA_efectos');
-      if (select) select.value = val;
-    } else if (id === 'bobinaB_efectos') {
-      const select = document.getElementById('select-bobinaB_efectos');
-      if (select) select.value = val;
-    }
+    if (container) container.classList.toggle('has-error', Boolean(error));
+    if (message) message.textContent = error;
+  });
+}
+
+function handleInput(id, rawValue) {
+  getFormState().values[id] = rawValue;
+  const validation = validateCurrentForm();
+  applyValidation(validation);
+  if (validation.isValid) debouncedCalculate();
+}
+
+function handleFieldKey(event, fieldId) {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  const fields = Array.from(document.querySelectorAll('#module-container .field-input'));
+  const index = fields.findIndex(input => input.id === fieldId);
+  if (index >= 0 && fields[index + 1]) fields[index + 1].focus();
+  else event.target.blur();
+}
+
+function updatePredefined(fieldId, selectValue) {
+  const store = getFormState();
+  store.presets[fieldId] = selectValue;
+  if (selectValue !== 'other') store.values[fieldId] = String(selectValue).replace('.', ',');
+  render();
+  if (selectValue === 'other') {
+    setTimeout(() => document.getElementById(fieldId)?.focus(), 0);
   }
 }
 
-function updatePredefined(fieldId, selectVal) {
-  const input = document.getElementById(fieldId);
-  if (selectVal !== 'other') {
-    input.value = selectVal;
-    syncEffects(fieldId, selectVal);
-    debouncedCalculate();
-  } else {
-    input.focus();
-    input.select();
-  }
-}
-
-function handleInput(id, val) {
-  syncEffects(id, val);
-  debouncedCalculate();
-}
-
-function renderField(f) {
-  const hasOptions = f.options && f.options.length > 0;
+function renderField(field) {
+  const store = getFormState();
+  const hasOptions = field.options && field.options.length > 0;
+  const selectedPreset = store.presets[field.id] || 'other';
+  const showInput = !hasOptions || selectedPreset === 'other';
+  const inputMode = isIntegerField(field) ? 'numeric' : 'decimal';
   return `
-    <div class="field-box">
-      <label for="${f.id}">${f.label}</label>
+    <div class="field-box" id="field-${field.id}">
+      <label for="${hasOptions ? `select-${field.id}` : field.id}">${field.label}</label>
       ${hasOptions ? `
-        <select id="select-${f.id}" class="field-select" onchange="updatePredefined('${f.id}', this.value)">
-          <option value="" disabled>Seleccionar...</option>
-          ${f.options.map(o => `<option value="${o.value}" ${o.value == f.val ? 'selected' : ''}>${o.label}</option>`).join('')}
+        <select id="select-${field.id}" class="field-select" aria-label="Preajuste para ${field.label}" onchange="updatePredefined('${field.id}', this.value)">
+          ${field.options.map(option => `<option value="${option.value}" ${String(option.value) === selectedPreset ? 'selected' : ''}>${option.label}</option>`).join('')}
         </select>
       ` : ''}
-      <input type="number" id="${f.id}" value="${f.val}" oninput="handleInput('${f.id}', this.value)" step="any" aria-required="true">
+      ${showInput ? `
+        <input class="field-input" type="text" inputmode="${inputMode}" id="${field.id}" value="${getFieldValue(field.id)}"
+          oninput="handleInput('${field.id}', this.value)" onkeydown="handleFieldKey(event, '${field.id}')"
+          autocomplete="off" aria-required="true" aria-describedby="error-${field.id}">
+      ` : ''}
+      <span class="field-error" id="error-${field.id}" role="alert"></span>
     </div>
   `;
 }
@@ -378,7 +451,7 @@ function renderField(f) {
 let calcTimeout;
 function debouncedCalculate() {
   clearTimeout(calcTimeout);
-  calcTimeout = setTimeout(calculate, 50);
+  calcTimeout = setTimeout(calculate, 80);
 }
 
 function render() {
@@ -466,8 +539,10 @@ function render() {
 }
 
 function calculate() {
-  const inputs = {};
-  document.querySelectorAll('input').forEach(i => inputs[i.id] = parseFloat(i.value) || 0);
+  const validation = validateCurrentForm();
+  applyValidation(validation);
+  if (!validation.isValid) return;
+  const inputs = validation.values;
   
   let res = 0, sec = 0, label = "Cálculo de Consumo", secLabel = "Peso por Revolución", unit = "Kilos (kg)", extra = "";
 

@@ -179,13 +179,16 @@ input::-webkit-inner-spin-button {
 .field-box:focus-within label { color: var(--accent); }
 .field-box input {
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px;
-  font-size: 18px; transition: all var(--motion-base) var(--ease-standard);
+  font-size: 18px; min-height: 56px; transition: all var(--motion-base) var(--ease-standard);
   box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 .field-box input:hover { border-color: var(--meta); }
 .field-box input:focus {
-  border-color: var(--accent); box-shadow: 0 10px 30px rgba(0, 113, 227, 0.15); transform: translateY(-4px);
+  border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.14);
 }
+.field-box.has-error label { color: #bb2a2a; }
+.field-box input.is-invalid { border-color: #d64747; background: #fff8f8; }
+.field-error { min-height: 18px; padding-left: 8px; color: #bb2a2a; font-size: 12px; font-weight: 600; line-height: 1.35; }
 
 .animate-reveal, .animate-stagger > *, .module-transition {
   will-change: transform, opacity;
@@ -195,12 +198,12 @@ input::-webkit-inner-spin-button {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px 14px;
-  font-size: 13px;
+  min-height: 48px; padding: 10px 14px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--fg);
   cursor: pointer;
-  margin-bottom: -4px;
+  margin-bottom: 0;
   transition: all var(--motion-base) var(--ease-standard);
   outline: none;
 }
@@ -368,9 +371,19 @@ body.dark-mode .menu-item:hover { background: rgba(255,255,255,0.1); color: #fff
 
 /* ─── mobile ────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
-  .glass-card { padding: 40px 24px; }
+  .container { padding-inline: 16px; }
+  .glass-card { padding: 28px 18px; border-radius: 18px; }
+  .input-grid { grid-template-columns: 1fr; gap: 20px; }
+  .pub-grid { grid-template-columns: 1fr; gap: 16px; }
+  .pub-section, .bobina-col { padding: 20px; }
+  .tabs-nav { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .tabs-nav::-webkit-scrollbar { display: none; }
+  .tab-btn { min-height: 44px; padding: 10px 16px; }
+  .field-box { gap: 8px; }
+  .field-box input { min-height: 56px; font-size: 18px; }
+  .field-select { min-height: 48px; font-size: 16px; }
   .results-area { flex-direction: column; align-items: flex-start; gap: 48px; padding: 32px 24px; }
-  .h1 { font-size: 56px; }
+  .h1 { font-size: clamp(42px, 13vw, 56px); }
   .result-value { font-size: 48px; }
   .nav-info { display: none; }
 }
@@ -500,7 +513,30 @@ body.dark-mode .menu-item:hover { background: rgba(255,255,255,0.1); color: #fff
  * Cumple con la directiva de Separación de Responsabilidades (SoC) y no interactúa con la UI.
  */
 
+const normalizarNumeroEntrada = (valor) => {
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+  if (typeof valor !== 'string') return null;
+
+  const texto = valor.trim().replace(/\s/g, '');
+  if (!texto || texto === '-' || texto === '+' || texto === ',' || texto === '.' || /[,.]$/.test(texto)) return null;
+
+  // Acepta tanto el formato habitual español (1.234,5) como el técnico (1234.5).
+  const normalizado = texto.includes(',') && texto.includes('.')
+    ? texto.replace(/\./g, '').replace(',', '.')
+    : texto.replace(',', '.');
+  const numero = Number(normalizado);
+  return Number.isFinite(numero) ? numero : null;
+};
+
+const numeroNoNegativo = (valor, predeterminado = 0) => {
+  const numero = normalizarNumeroEntrada(valor);
+  return numero !== null && numero >= 0 ? numero : predeterminado;
+};
+
+const resultadoSeguro = (valor, predeterminado = 0) => Number.isFinite(valor) && valor >= 0 ? valor : predeterminado;
+
 const CalculatorCore = {
+  normalizarNumeroEntrada,
   /**
    * Módulo 1: ROTATIVA (ROTt)
    */
@@ -522,7 +558,19 @@ const CalculatorCore = {
       cambios4_4 = 0,
       mermaCambio4_4 = 0
     }) {
-      if (vueltasArranque === 0 && tirada === 0) return 0;
+      vueltasArranque = numeroNoNegativo(vueltasArranque);
+      perdidoPct = numeroNoNegativo(perdidoPct);
+      tirada = numeroNoNegativo(tirada);
+      gramaje = numeroNoNegativo(gramaje);
+      pliegos = numeroNoNegativo(pliegos, 1);
+      efectos = numeroNoNegativo(efectos, 1);
+      desarrollo = numeroNoNegativo(desarrollo);
+      bobina = numeroNoNegativo(bobina);
+      cambios4_0 = numeroNoNegativo(cambios4_0);
+      mermaCambio4_0 = numeroNoNegativo(mermaCambio4_0);
+      cambios4_4 = numeroNoNegativo(cambios4_4);
+      mermaCambio4_4 = numeroNoNegativo(mermaCambio4_4);
+      if (vueltasArranque === 0 && tirada === 0 || efectos === 0) return 0;
       
       const perdidoTantoPorUno = perdidoPct / 100;
       const totalRevoluciones = 
@@ -537,7 +585,7 @@ const CalculatorCore = {
         (bobina / 100) * 
         pliegos;
         
-      return totalRevoluciones * pesoPorRevolucionKg;
+      return resultadoSeguro(totalRevoluciones * pesoPorRevolucionKg);
     },
 
     /**
@@ -553,7 +601,15 @@ const CalculatorCore = {
       arranque = 0,
       pliegos = 1
     }) {
-      if (kilos === 0) return 0;
+      kilos = numeroNoNegativo(kilos);
+      bobina = numeroNoNegativo(bobina);
+      gramaje = numeroNoNegativo(gramaje);
+      perdidoPct = numeroNoNegativo(perdidoPct);
+      efectos = numeroNoNegativo(efectos, 1);
+      desarrollo = numeroNoNegativo(desarrollo);
+      arranque = numeroNoNegativo(arranque);
+      pliegos = numeroNoNegativo(pliegos, 1);
+      if (kilos === 0 || efectos === 0) return 0;
       
       const pesoPorRevolucionKg = 
         (desarrollo / 100) * 
@@ -568,7 +624,7 @@ const CalculatorCore = {
       
       if (denominador === 0) return 0;
       
-      return (numerador / denominador) * efectos;
+      return resultadoSeguro((numerador / denominador) * efectos);
     }
   },
 
@@ -580,7 +636,7 @@ const CalculatorCore = {
      * Calcula el peso de una sola hoja en kg
      */
     pesoHoja(alto, ancho, gramaje) {
-      return (alto / 100) * (ancho / 100) * (gramaje / 1000);
+      return resultadoSeguro((numeroNoNegativo(alto) / 100) * (numeroNoNegativo(ancho) / 100) * (numeroNoNegativo(gramaje) / 1000));
     },
 
     // Para mantener compatibilidad con tests anteriores
@@ -593,7 +649,7 @@ const CalculatorCore = {
      */
     pliegosAKilos(pliegos, alto, ancho, gramaje) {
       const ph = this.pesoHoja(alto, ancho, gramaje);
-      return ph * pliegos;
+      return resultadoSeguro(ph * numeroNoNegativo(pliegos));
     },
 
     /**
@@ -602,7 +658,7 @@ const CalculatorCore = {
     kilosAPliegos(kilos, alto, ancho, gramaje) {
       const ph = this.pesoHoja(alto, ancho, gramaje);
       if (ph === 0) return 0;
-      return kilos / ph;
+      return resultadoSeguro(numeroNoNegativo(kilos) / ph);
     }
   },
 
@@ -614,8 +670,11 @@ const CalculatorCore = {
      * Calcula el factor de ancho de bobina efectivo
      */
     calcularFactorEfectivo(anchoBobina, web, efectos) {
-      if (efectos === 0) return 0;
-      return (anchoBobina * web) / efectos;
+      const ancho = numeroNoNegativo(anchoBobina);
+      const torres = numeroNoNegativo(web);
+      const numeroEfectos = numeroNoNegativo(efectos);
+      if (numeroEfectos === 0) return 0;
+      return resultadoSeguro((ancho * torres) / numeroEfectos);
     },
 
     /**
@@ -634,6 +693,15 @@ const CalculatorCore = {
       bobinaA = { ancho: 0, web: 0, efectos: 1 },
       bobinaB = { ancho: 0, web: 0, efectos: 1 }
     }) {
+      paginas = numeroNoNegativo(paginas);
+      tirada = numeroNoNegativo(tirada);
+      arranque = numeroNoNegativo(arranque);
+      anchoPagina = numeroNoNegativo(anchoPagina);
+      desarrollo = numeroNoNegativo(desarrollo);
+      altoPagina = numeroNoNegativo(altoPagina);
+      perdidoPct = numeroNoNegativo(perdidoPct);
+      gramaje = numeroNoNegativo(gramaje);
+      arranquesVersiones = numeroNoNegativo(arranquesVersiones, 1);
       const factA = this.calcularFactorEfectivo(bobinaA.ancho, bobinaA.web, bobinaA.efectos);
       const factB = this.calcularFactorEfectivo(bobinaB.ancho, bobinaB.web, bobinaB.efectos);
       const factTotal = factA + factB;
@@ -657,9 +725,9 @@ const CalculatorCore = {
       const kilosB = pesoTotal * (factB / factTotal);
 
       return {
-        kilosA,
-        kilosB,
-        kilosTotal: kilosA + kilosB
+        kilosA: resultadoSeguro(kilosA),
+        kilosB: resultadoSeguro(kilosB),
+        kilosTotal: resultadoSeguro(kilosA + kilosB)
       };
     },
 
@@ -677,6 +745,15 @@ const CalculatorCore = {
       gramaje = 0,
       arranquesVersiones = 1
     }) {
+      kilosTotal = numeroNoNegativo(kilosTotal);
+      paginas = numeroNoNegativo(paginas);
+      arranque = numeroNoNegativo(arranque);
+      anchoPagina = numeroNoNegativo(anchoPagina);
+      desarrollo = numeroNoNegativo(desarrollo);
+      altoPagina = numeroNoNegativo(altoPagina);
+      perdidoPct = numeroNoNegativo(perdidoPct);
+      gramaje = numeroNoNegativo(gramaje);
+      arranquesVersiones = numeroNoNegativo(arranquesVersiones, 1);
       if (kilosTotal === 0) return 0;
 
       const d = desarrollo || anchoPagina;
@@ -693,7 +770,7 @@ const CalculatorCore = {
       
       const factorPerdida = 1 + (perdidoPct / 100);
       
-      return totalEjemplaresDeTirada / factorPerdida;
+      return resultadoSeguro(totalEjemplaresDeTirada / factorPerdida);
     }
   },
 
@@ -705,7 +782,7 @@ const CalculatorCore = {
      * Calcula el peso de una parte de la publicación en kg
      */
     pesoParte(ancho, alto, gramaje, paginas) {
-      return (ancho / 100) * (alto / 100) * (gramaje / 1000) * (paginas / 2);
+      return resultadoSeguro((numeroNoNegativo(ancho) / 100) * (numeroNoNegativo(alto) / 100) * (numeroNoNegativo(gramaje) / 1000) * (numeroNoNegativo(paginas) / 2));
     },
 
     /**
@@ -719,11 +796,11 @@ const CalculatorCore = {
       
       const pesoUnitario = pInterior + pCubierta + pPortadilla + pCupon;
       const conTinta = pesoUnitario * 1.01; // +1% por tinta
-      const totalTirada = conTinta * inputs.pub_tirada;
+      const totalTirada = conTinta * numeroNoNegativo(inputs.pub_tirada);
       
       return { 
-        pesoUnitario: conTinta * 1000, // pesoUnitario en gramos
-        totalTirada 
+        pesoUnitario: resultadoSeguro(conTinta * 1000), // pesoUnitario en gramos
+        totalTirada: resultadoSeguro(totalTirada)
       };
     }
   }
@@ -970,15 +1047,13 @@ function shareResults() {
   const currentFields = modData.fields[state.mode];
   if (currentFields) {
     currentFields.forEach(f => {
-      const input = document.getElementById(f.id);
-      if (input) text += `- ${f.label}: ${input.value}\n`;
+      text += `- ${f.label}: ${getFieldValue(f.id)}\n`;
     });
   } else {
     // For single-mode modules like 'publicaciones'
     const defaultFields = modData.fields['std'] || [];
     defaultFields.forEach(f => {
-      const input = document.getElementById(f.id);
-      if (input) text += `- ${f.label}: ${input.value}\n`;
+      text += `- ${f.label}: ${getFieldValue(f.id)}\n`;
     });
   }
 
@@ -1013,8 +1088,7 @@ function exportToPDF() {
   
   const activeFields = modData.fields[state.mode] || modData.fields['std'] || [];
   activeFields.forEach(f => {
-    const inputElement = document.getElementById(f.id);
-    let valText = inputElement ? inputElement.value : '0';
+    let valText = getFieldValue(f.id) || '0';
     if (f.options) {
       const opt = f.options.find(o => o.value == valText);
       if (opt && opt.value !== 'other') valText = opt.label;
@@ -1063,52 +1137,128 @@ function exportToPDF() {
   }, 150);
 }
 
-function syncEffects(id, val) {
-  if (state.mod === 'rotativa') {
-    if (id === 'efectos') {
-      const select = document.getElementById('select-efectos');
-      if (select) select.value = val;
+const formState = {};
+
+function currentFormKey() {
+  return `${state.mod}:${state.mode}`;
+}
+
+function getCurrentFields() {
+  return CONFIG[state.mod].fields[state.mode] || CONFIG[state.mod].fields.std || [];
+}
+
+function getFormState() {
+  const key = currentFormKey();
+  if (!formState[key]) {
+    formState[key] = { values: {}, presets: {} };
+    getCurrentFields().forEach(field => {
+      formState[key].values[field.id] = String(field.val).replace('.', ',');
+      if (field.options) formState[key].presets[field.id] = field.options.some(option => String(option.value) === String(field.val)) ? String(field.val) : 'other';
+    });
+  }
+  return formState[key];
+}
+
+function getFieldValue(fieldId) {
+  return getFormState().values[fieldId] ?? '';
+}
+
+function parseInputValue(rawValue) {
+  return CalculatorCore.normalizarNumeroEntrada(rawValue);
+}
+
+function isIntegerField(field) {
+  return /tirada|pliegos|paginas|efectos|versiones|_web$|arranque|vueltas/i.test(field.id);
+}
+
+function allowsZero(field) {
+  return /perdidoPct|arranque|vueltas|pub_(por|cup)_/i.test(field.id);
+}
+
+function validateField(field, rawValue) {
+  const value = parseInputValue(rawValue);
+  if (value === null) return 'Introduce un número válido.';
+  if (value < 0) return 'No puede ser negativo.';
+  if (!allowsZero(field) && value === 0) return 'Debe ser mayor que cero.';
+  if (isIntegerField(field) && !Number.isInteger(value)) return 'Debe ser un número entero.';
+  if (/paginas/i.test(field.id) && value % 2 !== 0) return 'El número de páginas debe ser par.';
+  return '';
+}
+
+function validateCurrentForm() {
+  const fields = getCurrentFields();
+  const values = {};
+  const errors = {};
+  fields.forEach(field => {
+    const rawValue = getFieldValue(field.id);
+    const error = validateField(field, rawValue);
+    if (error) errors[field.id] = error;
+    else values[field.id] = parseInputValue(rawValue);
+  });
+  return { values, errors, isValid: Object.keys(errors).length === 0 };
+}
+
+function applyValidation(validation) {
+  getCurrentFields().forEach(field => {
+    const error = validation.errors[field.id] || '';
+    const input = document.getElementById(field.id);
+    const container = document.getElementById(`field-${field.id}`);
+    const message = document.getElementById(`error-${field.id}`);
+    if (input) {
+      input.classList.toggle('is-invalid', Boolean(error));
+      input.setAttribute('aria-invalid', String(Boolean(error)));
     }
-  } else if (state.mod === 'prensa') {
-    if (id === 'bobinaA_efectos') {
-      const select = document.getElementById('select-bobinaA_efectos');
-      if (select) select.value = val;
-    } else if (id === 'bobinaB_efectos') {
-      const select = document.getElementById('select-bobinaB_efectos');
-      if (select) select.value = val;
-    }
+    if (container) container.classList.toggle('has-error', Boolean(error));
+    if (message) message.textContent = error;
+  });
+}
+
+function handleInput(id, rawValue) {
+  getFormState().values[id] = rawValue;
+  const validation = validateCurrentForm();
+  applyValidation(validation);
+  if (validation.isValid) debouncedCalculate();
+}
+
+function handleFieldKey(event, fieldId) {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  const fields = Array.from(document.querySelectorAll('#module-container .field-input'));
+  const index = fields.findIndex(input => input.id === fieldId);
+  if (index >= 0 && fields[index + 1]) fields[index + 1].focus();
+  else event.target.blur();
+}
+
+function updatePredefined(fieldId, selectValue) {
+  const store = getFormState();
+  store.presets[fieldId] = selectValue;
+  if (selectValue !== 'other') store.values[fieldId] = String(selectValue).replace('.', ',');
+  render();
+  if (selectValue === 'other') {
+    setTimeout(() => document.getElementById(fieldId)?.focus(), 0);
   }
 }
 
-function updatePredefined(fieldId, selectVal) {
-  const input = document.getElementById(fieldId);
-  if (selectVal !== 'other') {
-    input.value = selectVal;
-    syncEffects(fieldId, selectVal);
-    debouncedCalculate();
-  } else {
-    input.focus();
-    input.select();
-  }
-}
-
-function handleInput(id, val) {
-  syncEffects(id, val);
-  debouncedCalculate();
-}
-
-function renderField(f) {
-  const hasOptions = f.options && f.options.length > 0;
+function renderField(field) {
+  const store = getFormState();
+  const hasOptions = field.options && field.options.length > 0;
+  const selectedPreset = store.presets[field.id] || 'other';
+  const showInput = !hasOptions || selectedPreset === 'other';
+  const inputMode = isIntegerField(field) ? 'numeric' : 'decimal';
   return `
-    <div class="field-box">
-      <label for="${f.id}">${f.label}</label>
+    <div class="field-box" id="field-${field.id}">
+      <label for="${hasOptions ? `select-${field.id}` : field.id}">${field.label}</label>
       ${hasOptions ? `
-        <select id="select-${f.id}" class="field-select" onchange="updatePredefined('${f.id}', this.value)">
-          <option value="" disabled>Seleccionar...</option>
-          ${f.options.map(o => `<option value="${o.value}" ${o.value == f.val ? 'selected' : ''}>${o.label}</option>`).join('')}
+        <select id="select-${field.id}" class="field-select" aria-label="Preajuste para ${field.label}" onchange="updatePredefined('${field.id}', this.value)">
+          ${field.options.map(option => `<option value="${option.value}" ${String(option.value) === selectedPreset ? 'selected' : ''}>${option.label}</option>`).join('')}
         </select>
       ` : ''}
-      <input type="number" id="${f.id}" value="${f.val}" oninput="handleInput('${f.id}', this.value)" step="any" aria-required="true">
+      ${showInput ? `
+        <input class="field-input" type="text" inputmode="${inputMode}" id="${field.id}" value="${getFieldValue(field.id)}"
+          oninput="handleInput('${field.id}', this.value)" onkeydown="handleFieldKey(event, '${field.id}')"
+          autocomplete="off" aria-required="true" aria-describedby="error-${field.id}">
+      ` : ''}
+      <span class="field-error" id="error-${field.id}" role="alert"></span>
     </div>
   `;
 }
@@ -1116,7 +1266,7 @@ function renderField(f) {
 let calcTimeout;
 function debouncedCalculate() {
   clearTimeout(calcTimeout);
-  calcTimeout = setTimeout(calculate, 50);
+  calcTimeout = setTimeout(calculate, 80);
 }
 
 function render() {
@@ -1204,8 +1354,10 @@ function render() {
 }
 
 function calculate() {
-  const inputs = {};
-  document.querySelectorAll('input').forEach(i => inputs[i.id] = parseFloat(i.value) || 0);
+  const validation = validateCurrentForm();
+  applyValidation(validation);
+  if (!validation.isValid) return;
+  const inputs = validation.values;
   
   let res = 0, sec = 0, label = "Cálculo de Consumo", secLabel = "Peso por Revolución", unit = "Kilos (kg)", extra = "";
 
