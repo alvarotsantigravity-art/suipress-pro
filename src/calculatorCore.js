@@ -3,7 +3,30 @@
  * Cumple con la directiva de Separación de Responsabilidades (SoC) y no interactúa con la UI.
  */
 
+const normalizarNumeroEntrada = (valor) => {
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+  if (typeof valor !== 'string') return null;
+
+  const texto = valor.trim().replace(/\s/g, '');
+  if (!texto || texto === '-' || texto === '+' || texto === ',' || texto === '.' || /[,.]$/.test(texto)) return null;
+
+  // Acepta tanto el formato habitual español (1.234,5) como el técnico (1234.5).
+  const normalizado = texto.includes(',') && texto.includes('.')
+    ? texto.replace(/\./g, '').replace(',', '.')
+    : texto.replace(',', '.');
+  const numero = Number(normalizado);
+  return Number.isFinite(numero) ? numero : null;
+};
+
+const numeroNoNegativo = (valor, predeterminado = 0) => {
+  const numero = normalizarNumeroEntrada(valor);
+  return numero !== null && numero >= 0 ? numero : predeterminado;
+};
+
+const resultadoSeguro = (valor, predeterminado = 0) => Number.isFinite(valor) && valor >= 0 ? valor : predeterminado;
+
 const CalculatorCore = {
+  normalizarNumeroEntrada,
   /**
    * Módulo 1: ROTATIVA (ROTt)
    */
@@ -25,7 +48,19 @@ const CalculatorCore = {
       cambios4_4 = 0,
       mermaCambio4_4 = 0
     }) {
-      if (vueltasArranque === 0 && tirada === 0) return 0;
+      vueltasArranque = numeroNoNegativo(vueltasArranque);
+      perdidoPct = numeroNoNegativo(perdidoPct);
+      tirada = numeroNoNegativo(tirada);
+      gramaje = numeroNoNegativo(gramaje);
+      pliegos = numeroNoNegativo(pliegos, 1);
+      efectos = numeroNoNegativo(efectos, 1);
+      desarrollo = numeroNoNegativo(desarrollo);
+      bobina = numeroNoNegativo(bobina);
+      cambios4_0 = numeroNoNegativo(cambios4_0);
+      mermaCambio4_0 = numeroNoNegativo(mermaCambio4_0);
+      cambios4_4 = numeroNoNegativo(cambios4_4);
+      mermaCambio4_4 = numeroNoNegativo(mermaCambio4_4);
+      if (vueltasArranque === 0 && tirada === 0 || efectos === 0) return 0;
       
       const perdidoTantoPorUno = perdidoPct / 100;
       const totalRevoluciones = 
@@ -40,7 +75,7 @@ const CalculatorCore = {
         (bobina / 100) * 
         pliegos;
         
-      return totalRevoluciones * pesoPorRevolucionKg;
+      return resultadoSeguro(totalRevoluciones * pesoPorRevolucionKg);
     },
 
     /**
@@ -56,7 +91,15 @@ const CalculatorCore = {
       arranque = 0,
       pliegos = 1
     }) {
-      if (kilos === 0) return 0;
+      kilos = numeroNoNegativo(kilos);
+      bobina = numeroNoNegativo(bobina);
+      gramaje = numeroNoNegativo(gramaje);
+      perdidoPct = numeroNoNegativo(perdidoPct);
+      efectos = numeroNoNegativo(efectos, 1);
+      desarrollo = numeroNoNegativo(desarrollo);
+      arranque = numeroNoNegativo(arranque);
+      pliegos = numeroNoNegativo(pliegos, 1);
+      if (kilos === 0 || efectos === 0) return 0;
       
       const pesoPorRevolucionKg = 
         (desarrollo / 100) * 
@@ -71,7 +114,7 @@ const CalculatorCore = {
       
       if (denominador === 0) return 0;
       
-      return (numerador / denominador) * efectos;
+      return resultadoSeguro((numerador / denominador) * efectos);
     }
   },
 
@@ -83,7 +126,7 @@ const CalculatorCore = {
      * Calcula el peso de una sola hoja en kg
      */
     pesoHoja(alto, ancho, gramaje) {
-      return (alto / 100) * (ancho / 100) * (gramaje / 1000);
+      return resultadoSeguro((numeroNoNegativo(alto) / 100) * (numeroNoNegativo(ancho) / 100) * (numeroNoNegativo(gramaje) / 1000));
     },
 
     // Para mantener compatibilidad con tests anteriores
@@ -96,7 +139,7 @@ const CalculatorCore = {
      */
     pliegosAKilos(pliegos, alto, ancho, gramaje) {
       const ph = this.pesoHoja(alto, ancho, gramaje);
-      return ph * pliegos;
+      return resultadoSeguro(ph * numeroNoNegativo(pliegos));
     },
 
     /**
@@ -105,7 +148,7 @@ const CalculatorCore = {
     kilosAPliegos(kilos, alto, ancho, gramaje) {
       const ph = this.pesoHoja(alto, ancho, gramaje);
       if (ph === 0) return 0;
-      return kilos / ph;
+      return resultadoSeguro(numeroNoNegativo(kilos) / ph);
     }
   },
 
@@ -117,8 +160,11 @@ const CalculatorCore = {
      * Calcula el factor de ancho de bobina efectivo
      */
     calcularFactorEfectivo(anchoBobina, web, efectos) {
-      if (efectos === 0) return 0;
-      return (anchoBobina * web) / efectos;
+      const ancho = numeroNoNegativo(anchoBobina);
+      const torres = numeroNoNegativo(web);
+      const numeroEfectos = numeroNoNegativo(efectos);
+      if (numeroEfectos === 0) return 0;
+      return resultadoSeguro((ancho * torres) / numeroEfectos);
     },
 
     /**
@@ -137,6 +183,15 @@ const CalculatorCore = {
       bobinaA = { ancho: 0, web: 0, efectos: 1 },
       bobinaB = { ancho: 0, web: 0, efectos: 1 }
     }) {
+      paginas = numeroNoNegativo(paginas);
+      tirada = numeroNoNegativo(tirada);
+      arranque = numeroNoNegativo(arranque);
+      anchoPagina = numeroNoNegativo(anchoPagina);
+      desarrollo = numeroNoNegativo(desarrollo);
+      altoPagina = numeroNoNegativo(altoPagina);
+      perdidoPct = numeroNoNegativo(perdidoPct);
+      gramaje = numeroNoNegativo(gramaje);
+      arranquesVersiones = numeroNoNegativo(arranquesVersiones, 1);
       const factA = this.calcularFactorEfectivo(bobinaA.ancho, bobinaA.web, bobinaA.efectos);
       const factB = this.calcularFactorEfectivo(bobinaB.ancho, bobinaB.web, bobinaB.efectos);
       const factTotal = factA + factB;
@@ -160,9 +215,9 @@ const CalculatorCore = {
       const kilosB = pesoTotal * (factB / factTotal);
 
       return {
-        kilosA,
-        kilosB,
-        kilosTotal: kilosA + kilosB
+        kilosA: resultadoSeguro(kilosA),
+        kilosB: resultadoSeguro(kilosB),
+        kilosTotal: resultadoSeguro(kilosA + kilosB)
       };
     },
 
@@ -180,6 +235,15 @@ const CalculatorCore = {
       gramaje = 0,
       arranquesVersiones = 1
     }) {
+      kilosTotal = numeroNoNegativo(kilosTotal);
+      paginas = numeroNoNegativo(paginas);
+      arranque = numeroNoNegativo(arranque);
+      anchoPagina = numeroNoNegativo(anchoPagina);
+      desarrollo = numeroNoNegativo(desarrollo);
+      altoPagina = numeroNoNegativo(altoPagina);
+      perdidoPct = numeroNoNegativo(perdidoPct);
+      gramaje = numeroNoNegativo(gramaje);
+      arranquesVersiones = numeroNoNegativo(arranquesVersiones, 1);
       if (kilosTotal === 0) return 0;
 
       const d = desarrollo || anchoPagina;
@@ -196,7 +260,7 @@ const CalculatorCore = {
       
       const factorPerdida = 1 + (perdidoPct / 100);
       
-      return totalEjemplaresDeTirada / factorPerdida;
+      return resultadoSeguro(totalEjemplaresDeTirada / factorPerdida);
     }
   },
 
@@ -208,7 +272,7 @@ const CalculatorCore = {
      * Calcula el peso de una parte de la publicación en kg
      */
     pesoParte(ancho, alto, gramaje, paginas) {
-      return (ancho / 100) * (alto / 100) * (gramaje / 1000) * (paginas / 2);
+      return resultadoSeguro((numeroNoNegativo(ancho) / 100) * (numeroNoNegativo(alto) / 100) * (numeroNoNegativo(gramaje) / 1000) * (numeroNoNegativo(paginas) / 2));
     },
 
     /**
@@ -222,11 +286,11 @@ const CalculatorCore = {
       
       const pesoUnitario = pInterior + pCubierta + pPortadilla + pCupon;
       const conTinta = pesoUnitario * 1.01; // +1% por tinta
-      const totalTirada = conTinta * inputs.pub_tirada;
+      const totalTirada = conTinta * numeroNoNegativo(inputs.pub_tirada);
       
       return { 
-        pesoUnitario: conTinta * 1000, // pesoUnitario en gramos
-        totalTirada 
+        pesoUnitario: resultadoSeguro(conTinta * 1000), // pesoUnitario en gramos
+        totalTirada: resultadoSeguro(totalTirada)
       };
     }
   }

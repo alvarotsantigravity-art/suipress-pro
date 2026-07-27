@@ -18,6 +18,17 @@ let allPassed = true;
 
 console.log("=== RUNNING UNIT TESTS FOR CALCULATOR CORE ===\n");
 
+// 0. Entrada segura: el usuario puede usar coma o punto decimal.
+allPassed &= assertAlmostEqual(CalculatorCore.normalizarNumeroEntrada('48,8'), 48.8, 0.0001, "ENTRADA - Decimal con coma");
+allPassed &= assertAlmostEqual(CalculatorCore.normalizarNumeroEntrada('48.8'), 48.8, 0.0001, "ENTRADA - Decimal con punto");
+const entradaIncompleta = CalculatorCore.normalizarNumeroEntrada('12,');
+if (entradaIncompleta !== null) {
+  console.error('❌ FAIL: ENTRADA - Decimal incompleto debe permanecer pendiente');
+  allPassed = false;
+} else {
+  console.log('✅ PASS: ENTRADA - Decimal incompleto debe permanecer pendiente');
+}
+
 // 1. ROTATIVA (ROTt) - Ejemplares a Kilos
 // Fila 2 de Excel ROTt:
 // B2 (vueltasArranque) = 5000
@@ -85,6 +96,9 @@ const rotInv1 = CalculatorCore.rotativa.kilosAEjemplares({
   arranque: 3000
 });
 allPassed &= assertAlmostEqual(rotInv1, 29435.96063, 0.01, "ROTt Kilos a Ejemplares - Fila 22");
+allPassed &= assertAlmostEqual(CalculatorCore.rotativa.ejemplaresAKilos({
+  tirada: 1000, gramaje: 80, bobina: 88, desarrollo: 124, efectos: 0
+}), 0, 0.01, "ROTt - Efectos cero no genera infinito");
 
 
 // 3. PLIEGO PLANO
@@ -139,6 +153,9 @@ const prensaInv = CalculatorCore.prensa.kilosAEjemplares({
   arranquesVersiones: 1
 });
 allPassed &= assertAlmostEqual(prensaInv, 2800000, 1.0, "PRENSA Kilos a Ejemplares (Inversa)");
+allPassed &= assertAlmostEqual(CalculatorCore.prensa.kilosAEjemplares({
+  kilosTotal: -500, paginas: 32, altoPagina: 40, desarrollo: 28.9, gramaje: 48.8
+}), 0, 0.01, "PRENSA - Kilos negativos se bloquean");
 
 
 // 6. PUBLICACIONES
