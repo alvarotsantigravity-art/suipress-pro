@@ -1,0 +1,5 @@
+*.xlsx
+*.artifact.json
+.od-skills/
+.gemini/
+NVIDIA Corporation/
