@@ -10,10 +10,23 @@ const normalizarNumeroEntrada = (valor) => {
   const texto = valor.trim().replace(/\s/g, '');
   if (!texto || texto === '-' || texto === '+' || texto === ',' || texto === '.' || /[,.]$/.test(texto)) return null;
 
-  // Acepta tanto el formato habitual español (1.234,5) como el técnico (1234.5).
-  const normalizado = texto.includes(',') && texto.includes('.')
-    ? texto.replace(/\./g, '').replace(',', '.')
-    : texto.replace(',', '.');
+  const tieneComa = texto.includes(',');
+  const tienePunto = texto.includes('.');
+  let normalizado = texto;
+
+  if (tieneComa && tienePunto) {
+    // El último separador es el decimal: admite 1.234,56 y 1,234.56.
+    const separadorDecimal = texto.lastIndexOf(',') > texto.lastIndexOf('.') ? ',' : '.';
+    const separadorMiles = separadorDecimal === ',' ? /\./g : /,/g;
+    normalizado = texto.replace(separadorMiles, '').replace(separadorDecimal, '.');
+  } else if (tieneComa || tienePunto) {
+    const separador = tieneComa ? ',' : '.';
+    const patronMiles = new RegExp(`^\\d{1,3}(?:\\${separador}\\d{3})+$`);
+    // Un único separador sigue siendo decimal salvo que forme grupos de miles.
+    normalizado = patronMiles.test(texto)
+      ? texto.replace(new RegExp(`\\${separador}`, 'g'), '')
+      : texto.replace(separador, '.');
+  }
   const numero = Number(normalizado);
   return Number.isFinite(numero) ? numero : null;
 };

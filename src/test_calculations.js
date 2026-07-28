@@ -21,6 +21,9 @@ console.log("=== RUNNING UNIT TESTS FOR CALCULATOR CORE ===\n");
 // 0. Entrada segura: el usuario puede usar coma o punto decimal.
 allPassed &= assertAlmostEqual(CalculatorCore.normalizarNumeroEntrada('48,8'), 48.8, 0.0001, "ENTRADA - Decimal con coma");
 allPassed &= assertAlmostEqual(CalculatorCore.normalizarNumeroEntrada('48.8'), 48.8, 0.0001, "ENTRADA - Decimal con punto");
+allPassed &= assertAlmostEqual(CalculatorCore.normalizarNumeroEntrada('2.800.000'), 2800000, 0.0001, "ENTRADA - Miles con puntos");
+allPassed &= assertAlmostEqual(CalculatorCore.normalizarNumeroEntrada('2.800.000,50'), 2800000.5, 0.0001, "ENTRADA - Miles y decimal español");
+allPassed &= assertAlmostEqual(CalculatorCore.normalizarNumeroEntrada('2,800,000.50'), 2800000.5, 0.0001, "ENTRADA - Miles y decimal técnico");
 const entradaIncompleta = CalculatorCore.normalizarNumeroEntrada('12,');
 if (entradaIncompleta !== null) {
   console.error('❌ FAIL: ENTRADA - Decimal incompleto debe permanecer pendiente');
@@ -138,6 +141,21 @@ const prensaRes = CalculatorCore.prensa.ejemplaresAKilos({
 allPassed &= assertAlmostEqual(prensaRes.kilosA, 111715.84, 0.01, "PRENSA - Kilos Bobina A");
 allPassed &= assertAlmostEqual(prensaRes.kilosB, 167573.76, 0.01, "PRENSA - Kilos Bobina B");
 allPassed &= assertAlmostEqual(prensaRes.kilosTotal, 279289.6, 0.01, "PRENSA - Kilos Total");
+
+const prensaSoloA = CalculatorCore.prensa.ejemplaresAKilos({
+  paginas: 40,
+  tirada: 2800000,
+  arranque: 10000,
+  anchoPagina: 40,
+  altoPagina: 28.9,
+  perdidoPct: 7.5,
+  gramaje: 40,
+  arranquesVersiones: 1,
+  bobinaA: { ancho: 160, web: 1, efectos: 2 },
+  bobinaB: { ancho: 0, web: 1, efectos: 2 }
+});
+allPassed &= assertAlmostEqual(prensaSoloA.kilosA, 279289.6, 0.01, "PRENSA - Sólo Bobina A");
+allPassed &= assertAlmostEqual(prensaSoloA.kilosB, 0, 0.01, "PRENSA - Bobina B sin uso");
 
 
 // 5. PAPEL PRENSA - Inverso
