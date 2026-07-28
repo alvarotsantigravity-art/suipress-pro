@@ -37,6 +37,12 @@ const PRESET_ANCHOS = [
   { label: 'Otro', value: 'other' }
 ];
 
+// El cero sólo está disponible para Bobina B de PRENSA, cuando la tirada se hace sólo por A.
+const PRESET_ANCHOS_PRENSA_B = [
+  { label: '0 cm (sin bobina)', value: 0 },
+  ...PRESET_ANCHOS
+];
+
 const CONFIG = {
   rotativa: {
     title: "Comercial",
@@ -125,7 +131,7 @@ const CONFIG = {
         {id: 'bobinaA_efectos', label: 'Efectos', val: 2, group: 'A', options: [
           {label: '1', value: 1}, {label: '2', value: 2}
         ]},
-        {id: 'bobinaB_ancho', label: 'Ancho Bobina B (cm)', val: 80, group: 'B', options: PRESET_ANCHOS},
+        {id: 'bobinaB_ancho', label: 'Ancho Bobina B (cm)', val: 80, group: 'B', options: PRESET_ANCHOS_PRENSA_B},
         {id: 'bobinaB_web', label: 'Torres', val: 1, group: 'B', options: [
           {label: '1', value: 1}, {label: '2', value: 2}, {label: '3', value: 3}, 
           {label: '4', value: 4}, {label: '5', value: 5}, {label: 'Otro', value: 'other'}
@@ -163,7 +169,7 @@ const CONFIG = {
         {id: 'bobinaA_efectos', label: 'Efectos', val: 2, group: 'A', options: [
           {label: '1', value: 1}, {label: '2', value: 2}
         ]},
-        {id: 'bobinaB_ancho', label: 'Ancho Bobina B (cm)', val: 80, group: 'B', options: PRESET_ANCHOS},
+        {id: 'bobinaB_ancho', label: 'Ancho Bobina B (cm)', val: 80, group: 'B', options: PRESET_ANCHOS_PRENSA_B},
         {id: 'bobinaB_web', label: 'Torres', val: 1, group: 'B', options: [
           {label: '1', value: 1}, {label: '2', value: 2}, {label: '3', value: 3}, 
           {label: '4', value: 4}, {label: '5', value: 5}, {label: 'Otro', value: 'other'}
@@ -357,7 +363,8 @@ function isIntegerField(field) {
 }
 
 function allowsZero(field) {
-  return /perdidoPct|arranque|vueltas|pub_(por|cup)_/i.test(field.id);
+  return /perdidoPct|arranque|vueltas|pub_(por|cup)_/i.test(field.id)
+    || (state.mod === 'prensa' && field.id === 'bobinaB_ancho');
 }
 
 function validateField(field, rawValue) {

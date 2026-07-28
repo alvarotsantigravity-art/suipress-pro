@@ -17,13 +17,13 @@ try {
   const uiJs = fs.readFileSync(uiJsPath, 'utf8');
 
   console.log(`Inlining CSS...`);
-  html = html.replace('/* STYLES_PLACEHOLDER */', css);
+  html = html.replace('/* STYLES_PLACEHOLDER */', () => css);
 
   console.log(`Inlining CalculatorCore...`);
-  html = html.replace('/* CALCULATOR_CORE_PLACEHOLDER */', coreJs);
+  html = html.replace('/* CALCULATOR_CORE_PLACEHOLDER */', () => coreJs);
 
   console.log(`Inlining UI Controller...`);
-  html = html.replace('/* UI_CONTROLLER_PLACEHOLDER */', uiJs);
+  html = html.replace('/* UI_CONTROLLER_PLACEHOLDER */', () => uiJs);
 
   console.log(`Writing unified index.html...`);
   fs.writeFileSync(outputPath, html, 'utf8');
